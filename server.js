@@ -34,7 +34,7 @@ app.get('/api/test', (req, res) => {
 
 // API Routes
 app.use('/api', onboardingRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api', authRoutes);
 
 // 404 handler
 app.use((req, res) => {
