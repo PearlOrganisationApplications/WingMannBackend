@@ -14,6 +14,7 @@ app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
 // Basic Routes (No controllers)
+const onboardingRoutes = require('./routes/onboardingRoutes');
 
 // Health check
 app.get('/', (req, res) => {
@@ -29,6 +30,9 @@ app.get('/api/test', (req, res) => {
         message: 'Test route working'
     });
 });
+
+// API Routes
+app.use('/api', onboardingRoutes);
 
 // 404 handler
 app.use((req, res) => {
