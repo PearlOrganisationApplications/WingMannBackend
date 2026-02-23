@@ -16,6 +16,7 @@ app.use('/uploads', express.static('uploads'));
 // Basic Routes (No controllers)
 const onboardingRoutes = require('./routes/onboardingRoutes');
 const authRoutes = require('./routes/auth.routes');
+const interviewerRoutes = require('./routes/interviewer.routes');
 
 // Health check
 app.get('/', (req, res) => {
@@ -35,6 +36,7 @@ app.get('/api/test', (req, res) => {
 // API Routes
 app.use('/api', onboardingRoutes);
 app.use('/api', authRoutes);
+app.use('/api', interviewerRoutes);
 
 // 404 handler
 app.use((req, res) => {
