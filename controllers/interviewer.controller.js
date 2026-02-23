@@ -52,4 +52,42 @@ const getAvailability = async (req, res) => {
     }
 };
 
-module.exports = { addAvailability, getAvailability };
+
+
+
+
+// Get all availability slots, deduplicated by day + date + time
+const getAllAvailability = async (req, res) => {
+    try {
+        const interviewers = await Interviewer.find(); // get all interviewers
+
+        const uniqueSlots = [];
+        const seen = new Set();
+
+        interviewers.forEach(interviewer => {
+            interviewer.availability.forEach(slot => {
+                slot.times.forEach(time => {
+                    const key = `${slot.day}_${slot.date}_${time}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        uniqueSlots.push({
+                            day: slot.day,
+                            date: slot.date,
+                            time: time,
+                            interviewer: interviewer.user // optional: include interviewer id
+                        });
+                    }
+                });
+            });
+        });
+
+        res.json({ success: true, data: uniqueSlots });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
+
+
+module.exports = { addAvailability, getAvailability,getAllAvailability };
