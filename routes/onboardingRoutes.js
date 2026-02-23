@@ -10,14 +10,11 @@ const {
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
-const auth = require('../middlewares/auth');
 
-router.post(
-    '/onboarding/upload',
-    auth,
-    upload.array('photos', 6), // max 6 images
-    uploadPhotosAndPreferences
-);
+
+
+router.post('/uploadPhotosAndPreferences/:_id', upload.array('photos'), uploadPhotosAndPreferences);
+
 // CREATE
 router.post('/onboarding', onboarding);
 

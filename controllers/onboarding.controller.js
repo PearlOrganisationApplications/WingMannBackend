@@ -44,9 +44,9 @@ const getAllUsers = async (req, res, next) => {
 
 const uploadPhotosAndPreferences = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.params._id; // Get user _id from params
 
-        const user = await Onboarding.findById(userId);
+        const user = await User.findById(userId); // Use User model
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -59,7 +59,7 @@ const uploadPhotosAndPreferences = async (req, res) => {
             return `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
         });
 
-        // ✅ Preferences (object now, not array)
+        // ✅ Preferences (object)
         let preferences = {};
         if (req.body.preferences) {
             preferences = JSON.parse(req.body.preferences);
