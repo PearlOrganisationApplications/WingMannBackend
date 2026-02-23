@@ -42,6 +42,47 @@ const getAllUsers = async (req, res, next) => {
     }
 };
 
+const uploadPhotosAndPreferences = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const user = await Onboarding.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // ✅ Images
+        const imageUrls = req.files.map(file => {
+            return `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+        });
+
+        // ✅ Preferences (object now, not array)
+        let preferences = {};
+        if (req.body.preferences) {
+            preferences = JSON.parse(req.body.preferences);
+        }
+
+        user.photos = imageUrls;
+        user.preferences = preferences;
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Photos & preferences saved',
+            data: user
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
 
 // ✅ GET USER BY ID
 const getUserById = async (req, res, next) => {
@@ -100,5 +141,6 @@ module.exports = {
     onboarding,
     getAllUsers,
     getUserById,
-    updateUser
+    updateUser,
+    uploadPhotosAndPreferences
 };
