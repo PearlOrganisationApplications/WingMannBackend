@@ -9,7 +9,15 @@ connectDB();
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5174",
+      "https://wingman-santosh.onrender.com"
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
