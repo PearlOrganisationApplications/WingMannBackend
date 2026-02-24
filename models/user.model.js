@@ -33,8 +33,8 @@ const userSchema = new mongoose.Schema(
 
     qualification_info: String,
 
-    relagous: String, // keep as-is (avoid breaking DB)
-    religon: String, // keep as-is
+    relagous: String,   // keep as-is
+    religon: String,    // keep as-is
 
     eat_type: String,
 
@@ -62,18 +62,13 @@ const userSchema = new mongoose.Schema(
 
     isOnboarded: { type: Boolean, default: false },
 
-    // 🔑 NEW: Password for authentication
+    // Password stored as plain text
     password: { type: String },
 
-    // 🔑 NEW: Role for role-based login
-    role: {
-      type: String,
-      enum: ["admin", "interviewer", "user"],
-      default: "user",
-    },
-  },
-  { timestamps: true },
-);
+    // Role for role-based login
+    role: { type: String, enum: ['admin', 'interviewer', 'user'], default: 'user' }
+
+}, { timestamps: true });
 
 // 🔒 Hash password before saving (only if modified)
 userSchema.pre("save", async function (next) {
