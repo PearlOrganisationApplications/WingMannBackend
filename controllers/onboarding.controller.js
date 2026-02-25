@@ -95,6 +95,7 @@ const uploadPhotosAndPreferences = async (req, res) => {
         message: "User not found",
       });
     }
+    console.log(req.body)
 
     // ✅ Images
     const imageUrls = req.files.map((file) => {
