@@ -161,12 +161,16 @@ const getAllInterScheduled = async (req, res)=>{
 const getSpecificInterview= async (req, res)=>{
   try{
     const {bookingId} =req.params;
-     const data = await Booking.findOne({_id:bookingId}).populate('interviewer');
+     const data = await Booking
+  .findOne({ _id: bookingId })
+  .populate('interviewer', 'name email gender location -_id')
+  .populate('userId');
     res.status(200).json({
       success:true,
       message: "interview detail" ,
       inteview : data
     })
+    console.log(data)
 
 
   }catch(error){
