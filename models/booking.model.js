@@ -10,7 +10,7 @@ const bookingSchema = new mongoose.Schema(
     time: { type: String, required: true },
     interviewer: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Interviewer",
+      ref: "User",
       required: true,
     },
     meetLink: { type: String, required: true },
