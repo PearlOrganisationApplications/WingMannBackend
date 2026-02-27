@@ -19,6 +19,14 @@ const bookingSchema = new mongoose.Schema(
       enum: ["submitted", "accepted", "rejected"],
       default: "submitted",
     },
+
+    rejectionReason: {
+      type: String,
+      trim: true,
+      required: function () {
+        return this.status === "rejected";
+      },
+    },
   },
   { timestamps: true },
 );

@@ -175,39 +175,57 @@ const getSpecificInterview= async (req, res)=>{
   }
 }
 
-const postInterviewStatus= async (req, res)=>{
-  console.log("runing ............")
+const postInterviewStatus = async (req, res) => {
+  console.log("running ............");
+
   try {
-  const { bookingId } = req.params;
-  const { status } = req.body;
-  console.log('bbokign : ',bookingId, 'status : ', status)
+    const { bookingId } = req.params;
+    const { status, rejectionReason } = req.body;
 
-  const updatedBooking = await Booking.findByIdAndUpdate(
-    {_id:bookingId},
-    { status },
-    { new: true } // 🔥 returns updated document
-  );
+    console.log("booking:", bookingId, "status:", status);
 
-  if (!updatedBooking) {
-    return res.status(404).json({
+    if (status === "rejected" && !rejectionReason) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required when status is rejected",
+      });
+    }
+
+    const updateData = {
+      status,
+      rejectionReason: status === "rejected" ? rejectionReason : undefined,
+    };
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      bookingId,
+      updateData,
+      {
+        new: true,
+        runValidators: true, // 🔥 VERY IMPORTANT
+      }
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    console.log("updated:", updatedBooking);
+
+    res.status(200).json({
+      success: true,
+      message: "Interview status updated successfully",
+      booking: updatedBooking,
+    });
+
+  } catch (error) {
+    res.status(500).json({
       success: false,
-      message: "Booking not found",
+      message: error.message,
     });
   }
-  console.log('updated : ', updatedBooking)
-
-  res.status(200).json({
-    success: true,
-    message: "Interview status updated successfully",
-    booking: updatedBooking,
-  });
-
-} catch (error) {
-  res.status(500).json({
-    success: false,
-    message: error,
-  });
-}
-}
+};
 
 module.exports = { bookSlot, getBookings, getUserBookings, getAllInterScheduled, getSpecificInterview, postInterviewStatus };
