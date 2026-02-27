@@ -15,7 +15,7 @@ const upload = require('../middlewares/upload');
 
 
 router.post('/uploadPhotosAndPreferences/:_id', upload.array('photos'), uploadPhotosAndPreferences);
-router.post('/login', loginUser )
+router.post('/user/login', loginUser )
 
 // CREATE
 router.post('/onboarding', onboarding);

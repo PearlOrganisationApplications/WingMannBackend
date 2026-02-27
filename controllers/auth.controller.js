@@ -72,15 +72,13 @@ const login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid email or password' });
         }
 
-        const isMatch = await user.matchPassword(password);
+        const isMatch = await user.password == password;
         console.log('Password match result:', isMatch);
         if (!isMatch) {
             console.log('Incorrect password for user:', email);
             return res.status(401).json({ success: false, message: 'Invalid email or password' });
         }
-
         const token = generateToken(user._id, user.role);
-        console.log('Generated token:', token);
 
         res.json({
             success: true,
