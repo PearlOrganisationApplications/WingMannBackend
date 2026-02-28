@@ -13,7 +13,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:5174",
-      "https://wingman-santosh.onrender.com"
+      "https://wingman-santosh.onrender.com",
+      'https://wingmann.online'
     ],
     credentials: true,
   })
