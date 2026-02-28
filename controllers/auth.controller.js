@@ -211,7 +211,7 @@ const addRestaurent = async (req, res) => {
 const getAllRestaurent = async (req, res)=>{
   const {adminId } = req.params;
   try{
-     const restaurent = await restaurentModel.find({ _id:adminId });
+     const restaurent = await restaurentModel.find({ uploadedBy:adminId });
     if (!restaurent) {
       console.log("restaurent not found:");
       return res
