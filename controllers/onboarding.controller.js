@@ -1,7 +1,9 @@
 const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config/config");
-
+const Quiz = require('../models/user.quiz')
+const transporter = require('../config/mail')
+const { welcomeTemplate } = require('../utils/emailTemplates')
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
@@ -51,21 +53,61 @@ const loginUser = async (req, res, next) => {
     });
 
     // 5️⃣ Remove password before sending user data
-    const userData = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-     
-    };
+   
 
     // 6️⃣ Send response
     res.status(200).json({
       success: true,
       token,
-      user: userData,
+      user: user,
     });
   } catch (error) {
     next(error);
+  }
+};
+
+
+
+const sendEmail = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Example update
+    user.isOnboarded = true;
+    await user.save();
+
+    // ✅ Prepare Email
+    const template = welcomeTemplate(user.name);
+
+    // ✅ Send Email
+    await transporter.sendMail({
+      from: `"WingMann" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: template.subject,
+      html: template.html,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "User accepted & email sent successfully",
+    });
+
+  } catch (error) {
+    console.error("Email error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -171,11 +213,69 @@ const updateUser = async (req, res, next) => {
   }
 };
 
+
+const submitQuiz = async (req, res) => {
+    try {
+        const { quizzes } = req.body; // Hum expect kar rahe hain { "quizzes": [...] }
+        const {userId} = req.params;   // Middleware se mil raha hai
+        console.log('quizzes ', quizzes, 'userId', userId)
+        // 1. Check karo ki array bheja bhi hai ya nahi
+        if (!quizzes || !Array.isArray(quizzes) || quizzes.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Please provide an array of quizzes in the 'quizzes' key." 
+            });
+        }
+
+        // 2. Data Prepare: Har quiz category ke object mein userId ghusana
+        const quizzesToSave = quizzes.map((quiz, index) => {
+            // Validation: Har quiz ke andar answers hona zaruri hai
+            if (!quiz.answers || !Array.isArray(quiz.answers) || quiz.answers.length === 0) {
+                throw new Error(`Quiz at index ${index} (${quiz.quizName || 'Unknown'}) is missing answers.`);
+            }
+
+            return {
+                userId: userId,
+                quizName: quiz.quizName,
+                answers: quiz.answers // Ye answers khud ek array hai [{question, selectedOption}]
+            };
+        });
+
+        // 3. Bulk Insert: Saare 5 cards ka data ek saath database mein save hoga
+        const savedQuizzes = await Quiz.insertMany(quizzesToSave);
+
+        res.status(201).json({ 
+            success: true, 
+            message: `${savedQuizzes.length} Quiz categories submitted successfully!`, 
+            data: savedQuizzes 
+        });
+
+    } catch (error) {
+        console.error("❌ Submit Error:", error.message);
+
+        // Validation ya Enum error handling
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Validation Error: Check quiz names or structure.",
+                error: error.message 
+            });
+        }
+
+        res.status(400).json({ 
+            success: false, 
+            message: error.message || "Internal Server Error" 
+        });
+    }
+};
+
 module.exports = {
   onboarding,
   getAllUsers,
   getUserById,
   updateUser,
   uploadPhotosAndPreferences,
-  loginUser
+  loginUser,
+  submitQuiz,
+  sendEmail
 };

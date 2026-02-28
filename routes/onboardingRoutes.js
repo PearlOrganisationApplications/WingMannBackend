@@ -7,18 +7,22 @@ const {
     getUserById,
     updateUser,
     uploadPhotosAndPreferences,
-    loginUser
+    loginUser,
+    submitQuiz,
+    sendEmail
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
 
 
-
+router.post('/submit/:userId', submitQuiz);
 router.post('/uploadPhotosAndPreferences/:_id', upload.array('photos'), uploadPhotosAndPreferences);
 router.post('/user/login', loginUser )
 
 // CREATE
 router.post('/onboarding', onboarding);
+// email
+router.post('/onboarding-email/:userId',sendEmail )
 
 // GET ALL
 router.get('/users', getAllUsers);
