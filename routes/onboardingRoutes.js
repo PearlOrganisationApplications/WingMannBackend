@@ -9,7 +9,8 @@ const {
     uploadPhotosAndPreferences,
     loginUser,
     submitQuiz,
-    sendEmail
+    sendEmail,
+    
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
@@ -29,6 +30,7 @@ router.get('/users', getAllUsers);
 
 // GET BY ID
 router.get('/users/:id', getUserById);
+
 
 // UPDATE
 router.put('/users/:id', updateUser);

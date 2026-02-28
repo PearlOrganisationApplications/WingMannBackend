@@ -3,7 +3,8 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config/config");
 const Quiz = require('../models/user.quiz')
 const transporter = require('../config/mail')
-const { welcomeTemplate } = require('../utils/emailTemplates')
+const { welcomeTemplate } = require('../utils/emailTemplates');
+const matchProfileSchema = require('../models/admin.photoupload')
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
@@ -180,14 +181,27 @@ const getUserById = async (req, res, next) => {
       });
     }
 
+     // ✅ Get user gender
+    const gender = user.gender;
+
+    // ✅ Get match profile images
+    const matchProfile = await matchProfileSchema.findOne({});
+
+    // filter avatars by gender
+    const avatar = matchProfile.photos.filter(
+      (photo) => photo.gender != gender
+    );
+
     res.json({
       success: true,
       data: user,
+      avatar
     });
   } catch (err) {
     next(err);
   }
 };
+
 
 // ✅ UPDATE USER
 const updateUser = async (req, res, next) => {
@@ -277,5 +291,6 @@ module.exports = {
   uploadPhotosAndPreferences,
   loginUser,
   submitQuiz,
-  sendEmail
+  sendEmail,
+  
 };
