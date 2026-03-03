@@ -232,4 +232,126 @@ const getAllRestaurent = async (req, res)=>{
   }
 }
 
-module.exports = { register, login, uploadMatchPhoto, addRestaurent, getAllRestaurent };
+const getMatchPhotosByAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    // Find the document where uploadedBy matches the adminId
+    const matchProfile = await matchProfileSchema.findOne({ uploadedBy: adminId });
+
+    if (!matchProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "No data found for this Admin ID",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: matchProfile,
+    });
+  } catch (error) {
+    console.error("Fetch error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+const updateMatchPhoto = async (req, res) => {
+  try {
+    // Extracting adminId, photoId, and gender from req.query (?adminId=...&photoId=...&gender=...)
+    const { adminId, photoId, gender } = req.query;
+
+    // 1. Build the update object dynamically
+    let updateData = {};
+
+    // If gender is provided in query, validate and add to update
+    if (gender) {
+      if (!["male", "female"].includes(gender)) {
+        return res.status(400).json({ message: "Gender must be male or female" });
+      }
+      updateData["photos.$.gender"] = gender;
+    }
+
+    // If a new file is uploaded (via multer), update the imgUrl
+    if (req.file) {
+      const newImgUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+      updateData["photos.$.imgUrl"] = newImgUrl;
+    }
+
+    // Check if we have something to update
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No data provided to update (gender or file required)" });
+    }
+
+    // 2. Update only the specific photo inside the array
+    const updatedProfile = await matchProfileSchema.findOneAndUpdate(
+      { 
+        uploadedBy: adminId,      // Matches adminId from query
+        "photos._id": photoId     // Matches photoId from query
+      },
+      { 
+        $set: updateData 
+      },
+      { new: true }
+    );
+
+    if (!updatedProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Match profile or Photo ID not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Photo updated successfully using query parameters",
+      data: updatedProfile,
+    });
+  } catch (error) {
+    console.error("Update error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const deleteMatchPhoto = async (req, res) => {
+  try {
+    const { adminId, photoId } = req.query;
+
+    // 1. Find the document that CONTAINS the specific photoId
+    // We search by "photos._id" instead of just "uploadedBy"
+    const updatedProfile = await matchProfileSchema.findOneAndUpdate(
+      { "photos._id": photoId }, 
+      { 
+        $pull: { 
+          photos: { _id: photoId } 
+        } 
+      },
+      { new: true }
+    );
+
+    // 2. If no document was found with that photoId
+    if (!updatedProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Photo not found. It may have already been deleted.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Photo deleted successfully",
+      data: updatedProfile,
+    });
+  } catch (error) {
+    console.error("Delete error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+module.exports = { register, login, uploadMatchPhoto, addRestaurent, getAllRestaurent, deleteMatchPhoto,getMatchPhotosByAdmin , updateMatchPhoto};
