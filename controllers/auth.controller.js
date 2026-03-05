@@ -208,6 +208,75 @@ const addRestaurent = async (req, res) => {
   }
 };
 
+const updateRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params; // Restaurant ki ID jo update karni hai
+    const {
+      venue,
+      businessName,
+      streetAddress,
+      cityState,
+      googleMapLink,
+      typeOfFood,
+      budgetPerPerson,
+    } = req.body;
+
+    // 1. Pehle check karein ki restaurant exist karta hai ya nahi
+    let restaurant = await restaurentModel.findById(id);
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    // 2. Image Update Logic
+    // Agar nayi file upload hui hai to uska URL banayein, nahi to purana hi rehne dein
+    let photoUrl = restaurant.photo; 
+    if (req.file) {
+      photoUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    }
+
+    // 3. Update Object taiyar karein
+    // Address nested object hai isliye hum isse handle karenge
+    const updatedData = {
+      photo: photoUrl,
+      venue: venue || restaurant.venue,
+      businessName: businessName || restaurant.businessName,
+      address: {
+        streetAddress: streetAddress || restaurant.address.streetAddress,
+        cityState: cityState || restaurant.address.cityState,
+        googleMapLink: googleMapLink || restaurant.address.googleMapLink,
+      },
+      typeOfFood: typeOfFood ? (Array.isArray(typeOfFood) ? typeOfFood : JSON.parse(typeOfFood)) : restaurant.typeOfFood,
+      budgetPerPerson: budgetPerPerson || restaurant.budgetPerPerson,
+    };
+
+    // 4. Database update karein
+    const updatedRestaurant = await restaurentModel.findByIdAndUpdate(
+      id,
+      { $set: updatedData },
+      { new: true, runValidators: true } // new: true se updated data return hoga
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Restaurant updated successfully",
+      data: updatedRestaurant,
+    });
+
+  } catch (error) {
+    console.error("Update Restaurant Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+
+
 const getAllRestaurent = async (req, res)=>{
   const {adminId } = req.params;
   try{
@@ -354,4 +423,4 @@ const deleteMatchPhoto = async (req, res) => {
     });
   }
 };
-module.exports = { register, login, uploadMatchPhoto, addRestaurent, getAllRestaurent, deleteMatchPhoto,getMatchPhotosByAdmin , updateMatchPhoto};
+module.exports = { register, login, uploadMatchPhoto,updateRestaurant, addRestaurent, getAllRestaurent, deleteMatchPhoto,getMatchPhotosByAdmin , updateMatchPhoto};

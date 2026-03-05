@@ -34,8 +34,9 @@ const restaurentModel = new mongoose.Schema(
     },
 
     typeOfFood: {
-      type: String,
+      type: [String],
       required: true,
+      default: []
     },
 
     budgetPerPerson: {
