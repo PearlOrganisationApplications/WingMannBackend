@@ -11,7 +11,8 @@ const {
     submitQuiz,
     sendEmail,
     getUserAnalytics,
-    
+    getRecommendedProfiles,
+    userProfileImage
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
@@ -32,6 +33,8 @@ router.get("/user-analytics", getUserAnalytics)
 
 // GET BY ID
 router.get('/users/:id', getUserById);
+router.get('/user-profile-recommendation/:userId',getRecommendedProfiles );
+router.post('/user-profile-image/:userId',upload.single('profilephoto'), userProfileImage)
 
 
 // UPDATE
