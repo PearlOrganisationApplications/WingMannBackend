@@ -227,6 +227,158 @@ const updateUser = async (req, res, next) => {
   }
 };
 
+const getUserAnalytics = async (req, res) => {
+  try {
+    const stats = await User.aggregate([
+      {
+        $facet: {
+          // 1. GENDER STATS (Logic as per your requirement)
+          genderStats: [
+            { $match: { gender: { $in: ["Male", "Female", "male", "female"] } } },
+            { $group: { _id: { $toLower: "$gender" }, count: { $sum: 1 } } }
+          ],
+
+          // 2. TOP 5 STATES
+          topStates: [
+            { $match: { state: { $ne: null, $exists: true, $ne: "" } } },
+            { $group: { _id: "$state", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+          ],
+
+          // 3. AGE GROUPS (18-22, 23-27, 28-32, 33+)
+          ageStats: [
+            {
+              $project: {
+                age: {
+                  $floor: {
+                    $divide: [
+                      { $subtract: [new Date(), "$DOB"] },
+                      365.25 * 24 * 60 * 60 * 1000
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              $bucket: {
+                groupBy: "$age",
+                boundaries: [18, 23, 28, 33, 120], 
+                default: "Other",
+                output: { count: { $sum: 1 } }
+              }
+            }
+          ],
+
+          // 4. WORK INFO (Logic: blank company = Student)
+          workStats: [
+            {
+              $project: {
+                category: {
+                  $cond: {
+                    if: { 
+                      $or: [
+                        { $eq: ["$work_info.company", ""] }, 
+                        { $eq: ["$work_info.company", null] },
+                        { $not: ["$work_info.company"] }
+                      ] 
+                    },
+                    then: "Student",
+                    else: "Professional"
+                  }
+                }
+              }
+            },
+            { $group: { _id: "$category", count: { $sum: 1 } } }
+          ]
+        }
+      }
+    ]);
+
+    // --- 1. GENDER CALCULATION ---
+    const genderResults = stats[0].genderStats;
+    let maleCount = 0;
+    let femaleCount = 0;
+    genderResults.forEach(g => {
+      if (g._id === 'male') maleCount = g.count;
+      if (g._id === 'female') femaleCount = g.count;
+    });
+
+    const totalGender = maleCount + femaleCount;
+    let malePercent = 0, femalePercent = 0, ratio = "0:0";
+
+    if (totalGender > 0) {
+      malePercent = ((maleCount / totalGender) * 100).toFixed(2);
+      femalePercent = ((femaleCount / totalGender) * 100).toFixed(2);
+      const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+      const common = gcd(maleCount, femaleCount);
+      ratio = `${maleCount / (common || 1)}:${femaleCount / (common || 1)}`;
+    }
+
+    // --- 2. AGE LOGIC (Relative Percentage Calculation) ---
+    const ageBuckets = stats[0].ageStats;
+    const ageRanges = [
+      { id: 18, label: "18-22" },
+      { id: 23, label: "23-27" },
+      { id: 28, label: "28-32" },
+      { id: 33, label: "33+" }
+    ];
+
+    // First, find total of ONLY these 4 age groups
+    let totalAgeCountInDefinedGroups = 0;
+    ageRanges.forEach(range => {
+      const found = ageBuckets.find(b => b._id === range.id);
+      if (found) totalAgeCountInDefinedGroups += found.count;
+    });
+
+    const ageAnalytics = ageRanges.map(range => {
+      const found = ageBuckets.find(b => b._id === range.id);
+      const count = found ? found.count : 0;
+      return {
+        range: range.label,
+        count: count,
+        percentage: totalAgeCountInDefinedGroups > 0 
+          ? ((count / totalAgeCountInDefinedGroups) * 100).toFixed(2) + "%" 
+          : "0.00%"
+      };
+    });
+
+    // --- 3. EMPLOYMENT LOGIC (Relative Percentage) ---
+    const workResults = stats[0].workStats;
+    const totalWorkUsers = workResults.reduce((acc, curr) => acc + curr.count, 0);
+    const employmentStatus = ["Student", "Professional"].map(cat => {
+      const found = workResults.find(w => w._id === cat);
+      const count = found ? found.count : 0;
+      return {
+        label: cat,
+        count: count,
+        percentage: totalWorkUsers > 0 ? ((count / totalWorkUsers) * 100).toFixed(2) + "%" : "0.00%"
+      };
+    });
+
+    // --- Final Response ---
+    res.status(200).json({
+      success: true,
+      data: {
+        genderAnalytics: {
+          maleCount,
+          femaleCount,
+          totalGenderUsers: totalGender,
+          malePercentage: `${malePercent}%`,
+          femalePercentage: `${femalePercent}%`,
+          ratio: ratio
+        },
+        top5States: stats[0].topStates.map(s => ({ state: s._id, userCount: s.count })),
+        ageAnalytics,
+        employmentStatus
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 const submitQuiz = async (req, res) => {
     try {
@@ -292,5 +444,6 @@ module.exports = {
   loginUser,
   submitQuiz,
   sendEmail,
+  getUserAnalytics
   
 };

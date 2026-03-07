@@ -10,6 +10,7 @@ const {
     loginUser,
     submitQuiz,
     sendEmail,
+    getUserAnalytics,
     
 } = require('../controllers/onboarding.controller');
 
@@ -27,6 +28,7 @@ router.post('/onboarding-email/:userId',sendEmail )
 
 // GET ALL
 router.get('/users', getAllUsers);
+router.get("/user-analytics", getUserAnalytics)
 
 // GET BY ID
 router.get('/users/:id', getUserById);
