@@ -2,7 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
-
+const trackTraffic = require('./middlewares/traffic');
 dotenv.config();
 connectDB();
 
@@ -22,6 +22,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
+app.use(trackTraffic)
 
 // Basic Routes (No controllers)
 const onboardingRoutes = require('./routes/onboardingRoutes');

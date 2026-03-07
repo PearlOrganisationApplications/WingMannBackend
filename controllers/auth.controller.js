@@ -1,7 +1,10 @@
 const User = require("../models/user.model");
+const Interviewer = require("../models/interviewer.model");
+const Booking = require("../models/booking.model");
+const Traffic = require("../models/trafficSchema");
 const jwt = require("jsonwebtoken");
 const matchProfileSchema = require("../models/admin.photoupload");
-const restaurentModel = require('../models/admin.restaurent');
+const restaurentModel = require("../models/admin.restaurent");
 const fs = require("fs");
 const path = require("path");
 
@@ -235,7 +238,7 @@ const updateRestaurant = async (req, res) => {
 
     // 2. Image Update Logic
     // Agar nayi file upload hui hai to uska URL banayein, nahi to purana hi rehne dein
-    let photoUrl = restaurant.photo; 
+    let photoUrl = restaurant.photo;
     if (req.file) {
       photoUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
     }
@@ -251,7 +254,11 @@ const updateRestaurant = async (req, res) => {
         cityState: cityState || restaurant.address.cityState,
         googleMapLink: googleMapLink || restaurant.address.googleMapLink,
       },
-      typeOfFood: typeOfFood ? (Array.isArray(typeOfFood) ? typeOfFood : JSON.parse(typeOfFood)) : restaurant.typeOfFood,
+      typeOfFood: typeOfFood
+        ? Array.isArray(typeOfFood)
+          ? typeOfFood
+          : JSON.parse(typeOfFood)
+        : restaurant.typeOfFood,
       budgetPerPerson: budgetPerPerson || restaurant.budgetPerPerson,
     };
 
@@ -259,7 +266,7 @@ const updateRestaurant = async (req, res) => {
     const updatedRestaurant = await restaurentModel.findByIdAndUpdate(
       id,
       { $set: updatedData },
-      { new: true, runValidators: true } // new: true se updated data return hoga
+      { new: true, runValidators: true }, // new: true se updated data return hoga
     );
 
     res.status(200).json({
@@ -267,22 +274,20 @@ const updateRestaurant = async (req, res) => {
       message: "Restaurant updated successfully",
       data: updatedRestaurant,
     });
-
   } catch (error) {
     console.error("Update Restaurant Error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-
-const getAllRestaurent = async (req, res)=>{
-  const {adminId } = req.params;
-  try{
-     const restaurent = await restaurentModel.find({ uploadedBy:adminId });
+const getAllRestaurent = async (req, res) => {
+  const { adminId } = req.params;
+  try {
+    const restaurent = await restaurentModel.find({ uploadedBy: adminId });
     if (!restaurent) {
       console.log("restaurent not found:");
       return res
@@ -293,17 +298,13 @@ const getAllRestaurent = async (req, res)=>{
     res.json({
       success: true,
       message: `get All Restaurent for Admin id : ${adminId}`,
-      data:restaurent
+      data: restaurent,
     });
-
-
   } catch (error) {
     console.error("Error in register:", error);
     res.status(500).json({ success: false, message: error.message });
   }
-}
-
-
+};
 
 const deleteRestaurant = async (req, res) => {
   try {
@@ -363,7 +364,9 @@ const getMatchPhotosByAdmin = async (req, res) => {
     const { adminId } = req.params;
 
     // Find the document where uploadedBy matches the adminId
-    const matchProfile = await matchProfileSchema.findOne({ uploadedBy: adminId });
+    const matchProfile = await matchProfileSchema.findOne({
+      uploadedBy: adminId,
+    });
 
     if (!matchProfile) {
       return res.status(404).json({
@@ -385,7 +388,6 @@ const getMatchPhotosByAdmin = async (req, res) => {
   }
 };
 
-
 const updateMatchPhoto = async (req, res) => {
   try {
     // Extracting adminId, photoId, and gender from req.query (?adminId=...&photoId=...&gender=...)
@@ -397,7 +399,9 @@ const updateMatchPhoto = async (req, res) => {
     // If gender is provided in query, validate and add to update
     if (gender) {
       if (!["male", "female"].includes(gender)) {
-        return res.status(400).json({ message: "Gender must be male or female" });
+        return res
+          .status(400)
+          .json({ message: "Gender must be male or female" });
       }
       updateData["photos.$.gender"] = gender;
     }
@@ -410,19 +414,21 @@ const updateMatchPhoto = async (req, res) => {
 
     // Check if we have something to update
     if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({ message: "No data provided to update (gender or file required)" });
+      return res.status(400).json({
+        message: "No data provided to update (gender or file required)",
+      });
     }
 
     // 2. Update only the specific photo inside the array
     const updatedProfile = await matchProfileSchema.findOneAndUpdate(
-      { 
-        uploadedBy: adminId,      // Matches adminId from query
-        "photos._id": photoId     // Matches photoId from query
+      {
+        uploadedBy: adminId, // Matches adminId from query
+        "photos._id": photoId, // Matches photoId from query
       },
-      { 
-        $set: updateData 
+      {
+        $set: updateData,
       },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedProfile) {
@@ -450,13 +456,13 @@ const deleteMatchPhoto = async (req, res) => {
     // 1. Find the document that CONTAINS the specific photoId
     // We search by "photos._id" instead of just "uploadedBy"
     const updatedProfile = await matchProfileSchema.findOneAndUpdate(
-      { "photos._id": photoId }, 
-      { 
-        $pull: { 
-          photos: { _id: photoId } 
-        } 
+      { "photos._id": photoId },
+      {
+        $pull: {
+          photos: { _id: photoId },
+        },
       },
-      { new: true }
+      { new: true },
     );
 
     // 2. If no document was found with that photoId
@@ -480,4 +486,167 @@ const deleteMatchPhoto = async (req, res) => {
     });
   }
 };
-module.exports = { register, login, uploadMatchPhoto,updateRestaurant, addRestaurent, getAllRestaurent, deleteMatchPhoto,getMatchPhotosByAdmin , updateMatchPhoto, deleteRestaurant};
+
+const dashboardOverview = async (req, res) => {
+  try {
+
+    const calculateGrowth = (current, previous) => {
+      if (previous === 0 && current === 0) return 0;
+      if (previous === 0) return current * 100;
+      return ((current - previous) / previous) * 100;
+    };
+
+    let { startDate, endDate } = req.query;
+
+    let startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    let endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    let startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+    let endOfYesterday = new Date(startOfToday);
+    endOfYesterday.setMilliseconds(-1);
+
+    // If frontend sends dates
+    if (startDate && endDate) {
+      startOfToday = new Date(startDate);
+      startOfToday.setHours(0,0,0,0);
+
+      endOfToday = new Date(endDate);
+      endOfToday.setHours(23,59,59,999);
+
+      const prevStart = new Date(startOfToday);
+      prevStart.setDate(prevStart.getDate() - (endOfToday - startOfToday)/(1000*60*60*24) - 1);
+
+      startOfYesterday = prevStart;
+      endOfYesterday = new Date(startOfToday);
+    }
+
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - 6);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // -------- USERS --------
+    const [currentUsers, prevUsers] = await Promise.all([
+      User.countDocuments({
+         role: "user",
+        createdAt: { $gte: startOfToday, $lte: endOfToday }
+      }),
+      User.countDocuments({
+        createdAt: { $gte: startOfYesterday, $lte: endOfYesterday }
+      })
+    ]);
+
+    const userGrowth = calculateGrowth(currentUsers, prevUsers);
+
+    // -------- INTERVIEWS --------
+    const [currentInterviews, prevInterviews] = await Promise.all([
+      Interviewer.countDocuments({
+        createdAt: { $gte: startOfToday, $lte: endOfToday }
+      }),
+      Interviewer.countDocuments({
+        createdAt: { $gte: startOfYesterday, $lte: endOfYesterday }
+      })
+    ]);
+
+    const interviewGrowth = calculateGrowth(currentInterviews, prevInterviews);
+
+    // -------- DATES --------
+    const [currentDates, prevDates] = await Promise.all([
+      restaurentModel.countDocuments({
+        createdAt: { $gte: startOfToday, $lte: endOfToday }
+      }),
+      restaurentModel.countDocuments({
+        createdAt: { $gte: startOfYesterday, $lte: endOfYesterday }
+      })
+    ]);
+
+    const dateGrowth = calculateGrowth(currentDates, prevDates);
+
+    // -------- BOOKINGS --------
+    const [acceptedBookings, rejectedBookings] = await Promise.all([
+      Booking.countDocuments({ status: "accepted" }),
+      Booking.countDocuments({ status: "rejected" })
+    ]);
+
+    const totalBookings = acceptedBookings + rejectedBookings;
+
+    const acceptedPercentage =
+      totalBookings === 0 ? 0 : (acceptedBookings / totalBookings) * 100;
+
+    // -------- TRAFFIC TODAY --------
+    const todayVisits = await Traffic.countDocuments({
+      createdAt: { $gte: startOfToday, $lte: endOfToday }
+    });
+
+    // -------- WEEKLY TRAFFIC --------
+    const weeklyVisits = await Traffic.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfWeek }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+          },
+          visits: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    const weekData = weeklyVisits.map(item => ({
+      date: item._id,
+      visits: item.visits
+    }));
+
+    res.json({
+      dashboard: {
+        users: {
+          total: currentUsers,
+          growth: userGrowth.toFixed(2) + "%"
+        },
+        interviews: {
+          total: currentInterviews,
+          growth: interviewGrowth.toFixed(2) + "%"
+        },
+        datesPlanned: {
+          total: currentDates,
+          growth: dateGrowth.toFixed(2) + "%"
+        }
+      },
+      bookings: {
+        accepted: acceptedBookings,
+        rejected: rejectedBookings,
+        acceptedPercentage: acceptedPercentage.toFixed(2) + "%"
+      },
+      traffic: {
+        today: todayVisits,
+        weekly: weekData
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+module.exports = {
+  register,
+  login,
+  uploadMatchPhoto,
+  updateRestaurant,
+  addRestaurent,
+  getAllRestaurent,
+  deleteMatchPhoto,
+  getMatchPhotosByAdmin,
+  updateMatchPhoto,
+  deleteRestaurant,
+  dashboardOverview,
+};
