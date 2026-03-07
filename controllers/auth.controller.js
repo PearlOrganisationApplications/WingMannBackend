@@ -1,7 +1,9 @@
 const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
 const matchProfileSchema = require("../models/admin.photoupload");
-const restaurentModel = require('../models/admin.restaurent')
+const restaurentModel = require('../models/admin.restaurent');
+const fs = require("fs");
+const path = require("path");
 
 // Generate JWT
 const generateToken = (id, role) => {
@@ -301,6 +303,61 @@ const getAllRestaurent = async (req, res)=>{
   }
 }
 
+
+
+const deleteRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params; // The ID of the restaurant to delete
+
+    // 1. Find the restaurant first to get the image path
+    const restaurant = await restaurentModel.findById(id);
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    // 2. Delete the physical image file from the server
+    // We extract the filename from the URL (e.g., "http://localhost:5000/uploads/image.jpg")
+    if (restaurant.photo) {
+      const filename = restaurant.photo.split("/").pop(); // Gets "image.jpg"
+      const filePath = path.join(__dirname, "../uploads", filename); // Adjust path to your uploads folder
+
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error("Failed to delete local image:", err);
+          // We don't return here because we still want to delete the DB record
+        }
+      });
+    }
+
+    // 3. Delete the record from the database
+    await restaurentModel.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Restaurant and associated image deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Restaurant Error:", error);
+
+    // Handle invalid Mongoose ObjectIDs
+    if (error.kind === "ObjectId") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Restaurant ID",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 const getMatchPhotosByAdmin = async (req, res) => {
   try {
     const { adminId } = req.params;
@@ -423,4 +480,4 @@ const deleteMatchPhoto = async (req, res) => {
     });
   }
 };
-module.exports = { register, login, uploadMatchPhoto,updateRestaurant, addRestaurent, getAllRestaurent, deleteMatchPhoto,getMatchPhotosByAdmin , updateMatchPhoto};
+module.exports = { register, login, uploadMatchPhoto,updateRestaurant, addRestaurent, getAllRestaurent, deleteMatchPhoto,getMatchPhotosByAdmin , updateMatchPhoto, deleteRestaurant};
