@@ -184,9 +184,10 @@ const getUserById = async (req, res, next) => {
     const matchProfile = await matchProfileSchema.findOne({});
 
     // filter avatars by gender
-    const avatar = matchProfile.photos.filter(
-      (photo) => photo.gender != gender,
-    );
+    const avatar = matchProfile.photos
+  .filter((photo) => photo.gender !== gender)
+  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  .slice(0, 18);
 
     const quizExists = await Quiz.exists({ userId: req.params.id });
 

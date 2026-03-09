@@ -22,7 +22,7 @@ exports.createDateRequest = async (req, res) => {
       });
     }
 
-    if (!locationType || !location || !mealType || !payType || !dateSlots) {
+    if (!locationType || !mealType || !payType || !dateSlots) {
       return res.status(400).json({
         success: false,
         message:
@@ -46,7 +46,7 @@ exports.createDateRequest = async (req, res) => {
       receiverId,
       requestType: requestType || "date req",
       locationType,
-      location,
+      // location,
       budget: budget ?? null,
       mealType: finalMealType,
       payType,
@@ -71,8 +71,8 @@ exports.getDateRequestsForReceiver = async (req, res) => {
     const receiverId = req.params.id;
 
     const requests = await DateRequest.find({ receiverId })
-      .populate("senderId", "name")
-      .populate("receiverId", "name")
+      .populate("senderId", "name profilephoto")
+      .populate("receiverId")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({

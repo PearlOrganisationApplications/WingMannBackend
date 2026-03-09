@@ -30,6 +30,7 @@ const authRoutes = require('./routes/auth.routes');
 const interviewerRoutes = require('./routes/interviewer.routes');
 const bookingRoutes = require('./routes/booking.routes');
 const feedbackRoutes = require("./routes/feedbackRoutes")
+const dateRequest = require('./routes/dateRequestRoutes')
 
 // Health check
 app.get('/', (req, res) => {
@@ -51,7 +52,8 @@ app.use('/api', onboardingRoutes);
 app.use('/api', authRoutes);
 app.use('/api', interviewerRoutes);
 app.use('/api', bookingRoutes);
-app.use("/api/feedback", feedbackRoutes)
+app.use("/api/feedback", feedbackRoutes);
+app.use('/api/call-request',dateRequest )
 
 // 404 handler
 app.use((req, res) => {

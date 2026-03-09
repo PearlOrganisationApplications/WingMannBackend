@@ -122,7 +122,7 @@ const getUserBookings = async (req, res) => {
     }
 
     // Find all bookings for this user
-    const bookings = await Booking.find({ userId }).populate(
+    const bookings = await Booking.find({interviewer:userId }).populate(
       "interviewer",
       "user availability",
     );

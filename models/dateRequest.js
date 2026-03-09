@@ -24,26 +24,11 @@ const dateRequestSchema = new mongoose.Schema(
     // location type
     locationType: {
       type: String,
-      enum: ["restaurant", "cafe"],
+      enum: ["Restaurant", "Cafe"],
       required: true,
     },
 
-    location: {
-  address: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  type: {
-    type: String,
-    enum: ["Point"],
-    default: "Point"
-  },
-  coordinates: {
-    type: [Number], // [longitude, latitude]
-    required: true
-  }
-},
+
     budget: {
       type: String,
       default: null, // you said: null or string
@@ -68,7 +53,8 @@ const dateRequestSchema = new mongoose.Schema(
     dateSlots: [
       {
         date: { type: String, required: true }, // example: "2026-02-06"
-        day: { type: String, required: true },  // example: "Friday"
+        day: { type: String, required: true },  // example: "Friday",
+        time:{ type: String, required: true}
       },
     ],
 
