@@ -68,9 +68,14 @@ exports.createDateRequest = async (req, res) => {
 
 exports.getDateRequestsForReceiver = async (req, res) => {
   try {
-    const receiverId = req.params.id;
+    const { receiverId, senderId } = req.query;
 
-    const requests = await DateRequest.find({ receiverId })
+    const filter = {};
+
+    if (receiverId) filter.receiverId = receiverId;
+    if (senderId) filter.senderId = senderId;
+
+    const requests = await DateRequest.find(filter)
       .populate("senderId", "name profilephoto")
       .populate("receiverId")
       .sort({ createdAt: -1 });
@@ -81,7 +86,10 @@ exports.getDateRequestsForReceiver = async (req, res) => {
       data: requests,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 // isme bhi count return hoga ,, total planned dates, total date request ye sab summary me ayega 

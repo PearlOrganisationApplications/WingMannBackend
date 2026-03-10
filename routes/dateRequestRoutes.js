@@ -4,6 +4,6 @@ const router = express.Router();
 
 router.post("/create", createDateRequest);
 
-router.get("/reciever/:id",getDateRequestsForReceiver);
+router.get("/reciever",getDateRequestsForReceiver);
 
 module.exports = router;

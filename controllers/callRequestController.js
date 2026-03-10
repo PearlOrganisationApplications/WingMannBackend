@@ -4,6 +4,7 @@ const CallRequest = require("../models/callRequest");
 const createCallRequest = async (req, res) => {
   try {
     const { senderId, receiverId, requestType } = req.body;
+    console.log(senderId,receiverId,requestType)
 
     if (!senderId || !receiverId || !requestType) {
       return res.status(400).json({ success: false, message: "All fields are required" });
@@ -30,7 +31,8 @@ const getRequestsForReceiver = async (req, res) => {
   try {
     const receiverId = req.params.id;
 
-    const requests = await CallRequest.find({ receiverId })
+    const requests = await CallRequest.find({ receiverId,
+     status: { $nin: ["accepted", "rejected"] } })
       .populate("senderId", "name") // sirf sender ka name populate
       .sort({ createdAt: -1 });
 
@@ -41,6 +43,31 @@ const getRequestsForReceiver = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+const changeStatusofCallRequest = async (req, res) => {
+  try {
+    const { receiverId, senderId } = req.query;
+    const { status } = req.body;
+
+    const request = await CallRequest.findOneAndUpdate(
+      { receiverId, senderId },
+      { status },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Call request updated successfully",
+      data: request,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -70,4 +97,4 @@ exports.getSignals = async (req, res) => {
 };
 
 
-module.exports = { createCallRequest, getRequestsForReceiver };
+module.exports = { createCallRequest, getRequestsForReceiver, changeStatusofCallRequest };

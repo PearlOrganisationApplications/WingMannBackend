@@ -5,6 +5,8 @@ const Quiz = require("../models/user.quiz");
 const transporter = require("../config/mail");
 const { welcomeTemplate } = require("../utils/emailTemplates");
 const matchProfileSchema = require("../models/admin.photoupload");
+const callRequest = require('../models/callRequest');
+const DateRequest = require('../models/dateRequest')
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
@@ -193,11 +195,22 @@ const getUserById = async (req, res, next) => {
 
     let exists = !!quizExists;
 
+
+    const call_request = await callRequest.find({senderId:req.params.id}).select("-senderId, -updatedAt")
+
+    const date_request = await  DateRequest.find({receiverId:req.params.id}).populate('senderId').select("-senderId, -updatedAt")
+
+
+
+
+
     res.json({
       success: true,
       data: user,
       quiz:exists,
       avatar,
+      call_request,
+      date_request
     });
   } catch (err) {
     next(err);

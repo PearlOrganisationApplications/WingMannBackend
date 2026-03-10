@@ -17,6 +17,13 @@ const callRequestSchema = new mongoose.Schema(
       enum: ["call request", "date request"],
       required: true,
     },
+    status:{
+      type:String,
+      enum:['submitted', 'rejected', 'accepted'],
+      required:true,
+      default:'submitted'
+
+    }
   },
   { timestamps: true }
 );
