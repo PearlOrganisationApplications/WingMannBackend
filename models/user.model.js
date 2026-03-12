@@ -33,27 +33,24 @@ const userSchema = new mongoose.Schema(
 
     qualification_info: String,
 
-    relagous: String,   // keep as-is
-    religon: String,    // keep as-is
+    relagous: String, // keep as-is
+    religon: String, // keep as-is
 
     eat_type: String,
 
     interest: [String],
-    lifestyle: 
-      {
-        drink: String,
-        smoke: String,
-        exercise: String,
-      },
-    
+    lifestyle: {
+      drink: String,
+      smoke: String,
+      exercise: String,
+    },
 
     photos: {
       type: [String],
       default: [],
     },
-    profilephoto:{
-      type:String,
-     
+    profilephoto: {
+      type: String,
     },
 
     preferences: {
@@ -70,9 +67,14 @@ const userSchema = new mongoose.Schema(
     password: { type: String },
 
     // Role for role-based login
-    role: { type: String, enum: ['admin', 'interviewer', 'user'], default: 'user' }
-
-}, { timestamps: true });
+    role: {
+      type: String,
+      enum: ["admin", "interviewer", "user"],
+      default: "user",
+    },
+  },
+  { timestamps: true },
+);
 
 // 🔒 Hash password before saving (only if modified)
 userSchema.pre("save", async function (next) {

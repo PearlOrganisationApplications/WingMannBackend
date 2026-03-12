@@ -199,7 +199,20 @@ const getUserById = async (req, res, next) => {
 
     const call_request = await callRequest.find({senderId:req.params.id}).select("-senderId, -updatedAt")
 
-    const date_request = await  DateRequest.find({receiverId:req.params.id}).populate('senderId').select("-senderId, -updatedAt")
+    // const date_request = await  DateRequest.find({receiverId:req.params.id}).populate('senderId').select("-senderId, -updatedAt")
+
+    const date_request = await DateRequest
+  .find({ receiverId: req.params.id })
+  .populate("senderId")
+  .select("-updatedAt");
+
+const date_accepted = date_request.filter(
+  (req) => req.status === "accepted"
+);
+
+const date_requested = date_request.filter(
+  (req) => req.status == "submitted"
+);
 
 
 
@@ -211,7 +224,8 @@ const getUserById = async (req, res, next) => {
       quiz:exists,
       avatar,
       call_request,
-      date_request
+      date_accepted,
+      date_requested
     });
   } catch (err) {
     next(err);
@@ -265,28 +279,36 @@ const getUserAnalytics = async (req, res) => {
 
           // 3. AGE GROUPS (18-22, 23-27, 28-32, 33+)
           ageStats: [
-            {
-              $project: {
-                age: {
-                  $floor: {
-                    $divide: [
-                      { $subtract: [new Date(), "$DOB"] },
-                      365.25 * 24 * 60 * 60 * 1000,
-                    ],
-                  },
-                },
-              },
+  {
+    // Step 1: Filter out documents where DOB is missing, null, or empty
+    $match: { 
+      DOB: { $exists: true, $ne: null, $ne: "" } 
+    }
+  },
+  {
+    $project: {
+      age: {
+        $floor: {
+          $divide: [
+            { 
+              // Step 2: Use $toDate to convert the string field to a Date object
+              $subtract: [new Date(), { $toDate: "$DOB" }] 
             },
-            {
-              $bucket: {
-                groupBy: "$age",
-                boundaries: [18, 23, 28, 33, 120],
-                default: "Other",
-                output: { count: { $sum: 1 } },
-              },
-            },
+            365.25 * 24 * 60 * 60 * 1000,
           ],
-
+        },
+      },
+    },
+  },
+  {
+    $bucket: {
+      groupBy: "$age",
+      boundaries: [18, 23, 28, 33, 120],
+      default: "Other",
+      output: { count: { $sum: 1 } },
+    },
+  },
+],
           // 4. WORK INFO (Logic: blank company = Student)
           workStats: [
             {

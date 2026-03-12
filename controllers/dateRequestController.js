@@ -7,30 +7,21 @@ exports.createDateRequest = async (req, res) => {
       receiverId,
       requestType,
       locationType,
-      location,
       budget,
       mealType,
       payType,
       dateSlots,
+      status // Body se status le rahe hain
     } = req.body;
 
-    // basic validation
-    if (!senderId || !receiverId) {
+    // 1. Mandatory Fields Validation
+    if (!senderId || !receiverId || !locationType || !mealType || !payType || !dateSlots) {
       return res.status(400).json({
         success: false,
-        message: "senderId and receiverId are required",
+        message: "Missing required fields: senderId, receiverId, locationType, mealType, payType, or dateSlots",
       });
     }
-
-    if (!locationType || !mealType || !payType || !dateSlots) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "locationType, location, mealType, payType, dateSlots are required",
-      });
-    }
-
-    // dateSlots must be array
+    
     if (!Array.isArray(dateSlots) || dateSlots.length === 0) {
       return res.status(400).json({
         success: false,
@@ -38,20 +29,36 @@ exports.createDateRequest = async (req, res) => {
       });
     }
 
-    // mealType must be array
     const finalMealType = Array.isArray(mealType) ? mealType : [mealType];
+    if (finalMealType.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "mealType must have at least one value",
+      });
+    }
 
+   
+    const allowedStatus = ["submitted", "accepted", "rejected"];
+    let finalStatus = status || "submitted"; 
+
+    if (status && !allowedStatus.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Must be: submitted, accepted, or rejected",
+      });
+    }
+
+    // 5. Create Request
     const newRequest = await DateRequest.create({
       senderId,
       receiverId,
-      requestType: requestType || "date req",
+      requestType: requestType || "date req", 
       locationType,
-      // location,
-      budget: budget ?? null,
+      budget: budget || null,
       mealType: finalMealType,
       payType,
-      dateSlots,
-      status: null, // pending
+      dateSlots, 
+      status: finalStatus
     });
 
     return res.status(201).json({
@@ -59,17 +66,20 @@ exports.createDateRequest = async (req, res) => {
       message: "Date request created successfully",
       data: newRequest,
     });
-  } catch (error) {
-    console.log(error, error.message);
 
-    return res.status(500).json({ success: false, message: error.message });
+  } catch (error) {
+    console.error("Error creating date request:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: error.message || "Internal Server Error" 
+    });
   }
 };
 
 exports.getDateRequestsForReceiver = async (req, res) => {
   try {
     const { receiverId, senderId } = req.query;
-
+    
     const filter = {};
 
     if (receiverId) filter.receiverId = receiverId;
@@ -93,6 +103,61 @@ exports.getDateRequestsForReceiver = async (req, res) => {
   }
 };
 
+
+exports.updateDateRequestStatus = async (req, res) => {
+  try {
+    const { id } = req.params; // Get ID from URL params
+    const { status } = req.body; // Get new status from Body
+
+    // 1. Validation: Ensure status is provided
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required",
+      });
+    }
+
+    // 2. Validation: Ensure status is one of the allowed values
+    const allowedStatus = ["submitted", "accepted", "rejected"];
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Must be: submitted, accepted, or rejected",
+      });
+    }
+
+    // 3. Find and Update the request
+    // We only update the 'status' field to prevent other data from being changed
+    const updatedRequest = await DateRequest.findByIdAndUpdate(
+      id,
+      { status: status },
+      { new: true, runValidators: true } // 'new: true' returns the modified document
+    );
+
+    // 4. Check if the request existed
+    if (!updatedRequest) {
+      return res.status(404).json({
+        success: false,
+        message: "Date request not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Status updated to ${status} successfully`,
+      data: updatedRequest,
+    });
+
+  } catch (error) {
+    console.error("Error updating date request status:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
+
 exports.getDateRequestdata = async (req, res) => {
   try {
     const { receiverId, senderId } = req.query;
@@ -108,4 +173,6 @@ exports.getDateRequestdata = async (req, res) => {
     });
   }
 };
-// isme bhi count return hoga ,, total planned dates, total date request ye sab summary me ayega
+
+
+

@@ -49,13 +49,13 @@ app.get('/api/test', (req, res) => {
 });
 
 // API Routes
+app.use('/api/date-request',dateRequest )
+app.use('/api/call-request',callRequest )
 app.use('/api', onboardingRoutes);
 app.use('/api', authRoutes);
 app.use('/api', interviewerRoutes);
 app.use('/api', bookingRoutes);
 app.use("/api/feedback", feedbackRoutes);
-app.use('/api/date-request',dateRequest )
-app.use('/api/call-request',callRequest )
 
 // 404 handler
 app.use((req, res) => {

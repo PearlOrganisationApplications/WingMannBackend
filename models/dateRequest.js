@@ -54,15 +54,17 @@ const dateRequestSchema = new mongoose.Schema(
       {
         date: { type: String, required: true }, // example: "2026-02-06"
         day: { type: String, required: true },  // example: "Friday",
-        time:{ type: String, required: true}
+        time:{ type: String, required: true},
+        status:{type: String, enum: ["null", "confirmed", ], default: "null"}
       },
     ],
 
     // null = pending, true = confirm, false = reject
     status: {
-      type: Boolean,
-      default: null,
-    },
+  type: String,
+  enum: ["accepted", "rejected", "submitted"],
+  default: "submitted"
+},
   },
   { timestamps: true }
 );
