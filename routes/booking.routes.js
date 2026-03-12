@@ -13,6 +13,6 @@ router.get('/user-bookings/:userId', getUserBookings);
 //booking accpeted or reject
 router.get('/all-interview/:userId', getAllInterScheduled);
 router.get('/interview-detail/:bookingId', getSpecificInterview );
-router.put('/interview-change-status/:bookingId', postInterviewStatus)
+router.put('/interview-change-status/:bookingId', postInterviewStatus);
 
 module.exports = router;

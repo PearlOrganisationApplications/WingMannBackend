@@ -71,8 +71,9 @@ const loginUser = async (req, res, next) => {
 const sendEmail = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log('user Id :', userId)
 
-    const user = await User.findById(userId);
+    const user = await User.findById({_id : userId});
 
     if (!user) {
       return res.status(404).json({

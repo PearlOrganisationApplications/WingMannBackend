@@ -33,7 +33,7 @@ const getRequestsForReceiver = async (req, res) => {
 
     const requests = await CallRequest.find({ receiverId,
      status: { $nin: ["accepted", "rejected"] } })
-      .populate("senderId", "name") // sirf sender ka name populate
+      .populate("senderId", "name profilephoto state") // sirf sender ka name populate
       .sort({ createdAt: -1 });
 
     res.status(200).json({

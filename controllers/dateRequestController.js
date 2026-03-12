@@ -61,7 +61,7 @@ exports.createDateRequest = async (req, res) => {
     });
   } catch (error) {
     console.log(error, error.message);
-    
+
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -92,4 +92,20 @@ exports.getDateRequestsForReceiver = async (req, res) => {
     });
   }
 };
-// isme bhi count return hoga ,, total planned dates, total date request ye sab summary me ayega 
+
+exports.getDateRequestdata = async (req, res) => {
+  try {
+    const { receiverId, senderId } = req.query;
+    const data = await DateRequest.find({
+      senderId: senderId,
+      receiverId: receiverId,
+    });
+    res.status(200).json({data, success:true})
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+// isme bhi count return hoga ,, total planned dates, total date request ye sab summary me ayega
