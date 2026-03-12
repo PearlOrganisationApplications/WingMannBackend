@@ -60,9 +60,10 @@ const dateRequestSchema = new mongoose.Schema(
 
     // null = pending, true = confirm, false = reject
     status: {
-      type: Boolean,
-      default: null,
-    },
+  type: String,
+  enum: ["accepted", "rejected", "submitted"],
+  default: "submitted"
+},
   },
   { timestamps: true }
 );

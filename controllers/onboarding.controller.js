@@ -264,28 +264,36 @@ const getUserAnalytics = async (req, res) => {
 
           // 3. AGE GROUPS (18-22, 23-27, 28-32, 33+)
           ageStats: [
-            {
-              $project: {
-                age: {
-                  $floor: {
-                    $divide: [
-                      { $subtract: [new Date(), "$DOB"] },
-                      365.25 * 24 * 60 * 60 * 1000,
-                    ],
-                  },
-                },
-              },
+  {
+    // Step 1: Filter out documents where DOB is missing, null, or empty
+    $match: { 
+      DOB: { $exists: true, $ne: null, $ne: "" } 
+    }
+  },
+  {
+    $project: {
+      age: {
+        $floor: {
+          $divide: [
+            { 
+              // Step 2: Use $toDate to convert the string field to a Date object
+              $subtract: [new Date(), { $toDate: "$DOB" }] 
             },
-            {
-              $bucket: {
-                groupBy: "$age",
-                boundaries: [18, 23, 28, 33, 120],
-                default: "Other",
-                output: { count: { $sum: 1 } },
-              },
-            },
+            365.25 * 24 * 60 * 60 * 1000,
           ],
-
+        },
+      },
+    },
+  },
+  {
+    $bucket: {
+      groupBy: "$age",
+      boundaries: [18, 23, 28, 33, 120],
+      default: "Other",
+      output: { count: { $sum: 1 } },
+    },
+  },
+],
           // 4. WORK INFO (Logic: blank company = Student)
           workStats: [
             {
