@@ -102,4 +102,57 @@ exports.getDateRequestsForReceiver = async (req, res) => {
     });
   }
 };
-// isme bhi count return hoga ,, total planned dates, total date request ye sab summary me ayega 
+
+
+exports.updateDateRequestStatus = async (req, res) => {
+  try {
+    const { id } = req.params; // Get ID from URL params
+    const { status } = req.body; // Get new status from Body
+
+    // 1. Validation: Ensure status is provided
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required",
+      });
+    }
+
+    // 2. Validation: Ensure status is one of the allowed values
+    const allowedStatus = ["submitted", "accepted", "rejected"];
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Must be: submitted, accepted, or rejected",
+      });
+    }
+
+    // 3. Find and Update the request
+    // We only update the 'status' field to prevent other data from being changed
+    const updatedRequest = await DateRequest.findByIdAndUpdate(
+      id,
+      { status: status },
+      { new: true, runValidators: true } // 'new: true' returns the modified document
+    );
+
+    // 4. Check if the request existed
+    if (!updatedRequest) {
+      return res.status(404).json({
+        success: false,
+        message: "Date request not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Status updated to ${status} successfully`,
+      data: updatedRequest,
+    });
+
+  } catch (error) {
+    console.error("Error updating date request status:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
