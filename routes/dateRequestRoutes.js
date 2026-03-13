@@ -8,6 +8,6 @@ router.get("/reciever",getDateRequestsForReceiver);
 // get speicfic user dte info
 router.get('/specific-receiver-data', getDateRequestdata)
 
-router.patch("/update/:id", updateDateRequestStatus);
+router.patch("/update", updateDateRequestStatus);
 
 module.exports = router;

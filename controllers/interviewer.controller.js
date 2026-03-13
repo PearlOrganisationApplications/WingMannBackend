@@ -128,8 +128,7 @@ const updateSpecificAvailability = async (req, res) => {
 
 const deleteSpecificSlot = async (req, res) => {
     try {
-        // Query parameters se userId aur slotId nikaalna
-        // URL format: /api/delete-slot?userId=...&slotId=...
+       
         const { userId, slotId } = req.query; 
 
         // 1. Validation: Check karein ki dono IDs provide ki gayi hain
