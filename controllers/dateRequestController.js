@@ -108,7 +108,8 @@ exports.updateDateRequestStatus = async (req, res) => {
   try {
     // 1. Dono IDs req.query se lein
     const { id, slotId } = req.query; 
-    const { status, slotDate, slotDay, slotTime, slotStatus } = req.body;
+    const { status, slotStatus } = req.body;
+    console.log("Received update request with query:", req.query, "and body:", req.body);
 
     // 2. Validation: Main ID hona zaroori hai
     if (!id) {
