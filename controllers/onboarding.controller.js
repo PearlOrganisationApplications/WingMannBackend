@@ -5,8 +5,8 @@ const Quiz = require("../models/user.quiz");
 const transporter = require("../config/mail");
 const { welcomeTemplate } = require("../utils/emailTemplates");
 const matchProfileSchema = require("../models/admin.photoupload");
-const callRequest = require('../models/callRequest');
-const DateRequest = require('../models/dateRequest')
+const callRequest = require("../models/callRequest");
+const DateRequest = require("../models/dateRequest");
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
@@ -71,9 +71,9 @@ const loginUser = async (req, res, next) => {
 const sendEmail = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log('user Id :', userId)
+    console.log("user Id :", userId);
 
-    const user = await User.findById({_id : userId});
+    const user = await User.findById({ _id: userId });
 
     if (!user) {
       return res.status(404).json({
@@ -188,44 +188,43 @@ const getUserById = async (req, res, next) => {
 
     // filter avatars by gender
     const avatar = matchProfile.photos
-  .filter((photo) => photo.gender !== gender)
-  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  .slice(0, 18);
+      .filter((photo) => photo.gender !== gender)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 18);
 
     const quizExists = await Quiz.exists({ userId: req.params.id });
 
     let exists = !!quizExists;
 
-
-    const call_request = await callRequest.find({senderId:req.params.id}).select("-senderId, -updatedAt")
+    const call_request = await callRequest
+      .find({ senderId: req.params.id })
+      .select("-senderId, -updatedAt");
 
     // const date_request = await  DateRequest.find({receiverId:req.params.id}).populate('senderId').select("-senderId, -updatedAt")
 
-    const date_request = await DateRequest
-  .find({ receiverId: req.params.id })
-  .populate("senderId")
-  .select("-updatedAt");
+    const date_request_received = await DateRequest.find({ receiverId: req.params.id })
+      .populate("senderId")
+      .select("-updatedAt");
 
-const date_accepted = date_request.filter(
-  (req) => req.status === "accepted"
-);
+    const date_accepted = date_request_received.filter(
+      (req) => req.status === "accepted",
+    );
 
-const date_requested = date_request.filter(
-  (req) => req.status == "submitted"
-);
+    const date_requested = date_request_received.filter(
+      (req) => req.status == "submitted",
+    );
 
-
-
-
+    const date_request_sent = await DateRequest.find({ senderId: req.params.id })
 
     res.json({
       success: true,
       data: user,
-      quiz:exists,
+      quiz: exists,
       avatar,
       call_request,
       date_accepted,
-      date_requested
+      date_requested,
+      date_request_sent
     });
   } catch (err) {
     next(err);
@@ -279,36 +278,36 @@ const getUserAnalytics = async (req, res) => {
 
           // 3. AGE GROUPS (18-22, 23-27, 28-32, 33+)
           ageStats: [
-  {
-    // Step 1: Filter out documents where DOB is missing, null, or empty
-    $match: { 
-      DOB: { $exists: true, $ne: null, $ne: "" } 
-    }
-  },
-  {
-    $project: {
-      age: {
-        $floor: {
-          $divide: [
-            { 
-              // Step 2: Use $toDate to convert the string field to a Date object
-              $subtract: [new Date(), { $toDate: "$DOB" }] 
+            {
+              // Step 1: Filter out documents where DOB is missing, null, or empty
+              $match: {
+                DOB: { $exists: true, $ne: null, $ne: "" },
+              },
             },
-            365.25 * 24 * 60 * 60 * 1000,
+            {
+              $project: {
+                age: {
+                  $floor: {
+                    $divide: [
+                      {
+                        // Step 2: Use $toDate to convert the string field to a Date object
+                        $subtract: [new Date(), { $toDate: "$DOB" }],
+                      },
+                      365.25 * 24 * 60 * 60 * 1000,
+                    ],
+                  },
+                },
+              },
+            },
+            {
+              $bucket: {
+                groupBy: "$age",
+                boundaries: [18, 23, 28, 33, 120],
+                default: "Other",
+                output: { count: { $sum: 1 } },
+              },
+            },
           ],
-        },
-      },
-    },
-  },
-  {
-    $bucket: {
-      groupBy: "$age",
-      boundaries: [18, 23, 28, 33, 120],
-      default: "Other",
-      output: { count: { $sum: 1 } },
-    },
-  },
-],
           // 4. WORK INFO (Logic: blank company = Student)
           workStats: [
             {
@@ -511,7 +510,7 @@ const getRecommendedProfiles = async (req, res) => {
     ) {
       const latestUsers = await User.find({
         _id: { $ne: currentUser._id },
-        role: "user"
+        role: "user",
       })
         .sort({ createdAt: -1 })
         .limit(10);
@@ -519,96 +518,116 @@ const getRecommendedProfiles = async (req, res) => {
       res.status(200).json({
         success: true,
         count: latestUsers.length,
-        users: latestUsers
+        users: latestUsers,
       });
       return;
     }
 
     // ✅ Normal recommendation logic
-   const users = await User.aggregate([
-  {
-    $match: {
-      _id: { $ne: currentUser._id },
-      role: "user"
-    }
-  },
-  {
-    $addFields: {
-      matchCount: {
-        $add: [
-          {
-            $cond: [{ $eq: ["$preferences.religion", pref.religion] }, 1, 0]
-          },
-          {
-            $cond: [{ $eq: ["$preferences.ethnicity", pref.ethnicity] }, 1, 0]
-          },
-          {
-            $cond: [
+    const users = await User.aggregate([
+      {
+        $match: {
+          _id: { $ne: currentUser._id },
+          role: "user",
+        },
+      },
+
+      {
+        $addFields: {
+          matchCount: {
+            $add: [
               {
-                $in: [
-                  pref.spoken_language?.[0] || "",
-                  { $ifNull: ["$preferences.spoken_language", []] }
-                ]
+                $cond: [
+                  { $eq: ["$preferences.religion", pref.religion] },
+                  1,
+                  0,
+                ],
               },
-              1,
-              0
-            ]
-          },
-          {
-            $cond: [
               {
-                $and: [
-                  { $gte: ["$preferences.age.max", pref.age?.min] },
-                  { $lte: ["$preferences.age.min", pref.age?.max] }
-                ]
+                $cond: [
+                  { $eq: ["$preferences.ethnicity", pref.ethnicity] },
+                  1,
+                  0,
+                ],
               },
-              1,
-              0
-            ]
-          },
-          {
-            $cond: [
               {
-                $and: [
-                  { $gte: ["$preferences.height.max", pref.height?.min] },
-                  { $lte: ["$preferences.height.min", pref.height?.max] }
-                ]
+                $cond: [
+                  {
+                    $gt: [
+                      {
+                        $size: {
+                          $setIntersection: [
+                            { $ifNull: ["$preferences.spoken_language", []] },
+                            pref.spoken_language || [],
+                          ],
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                  1,
+                  0,
+                ],
               },
-              1,
-              0
-            ]
-          }
-        ]
-      }
-    }
-  },
-  {
-    $match: {
-      matchCount: { $gte: 3 }
-    }
-  },
-  {
-    $sort: { matchCount: -1 }
-  },
-  {
-    $limit: 10
-  }
-]);
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ["$preferences.age.max", pref.age?.min] },
+                      { $lte: ["$preferences.age.min", pref.age?.max] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ["$preferences.height.max", pref.height?.min] },
+                      { $lte: ["$preferences.height.min", pref.height?.max] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+
+      // ⭐ calculate percentage
+      {
+        $addFields: {
+          compatibilityPercentage: {
+            $multiply: [{ $divide: ["$matchCount", 5] }, 100],
+          },
+        },
+      },
+
+      {
+        $sort: { matchCount: -1 },
+      },
+
+      {
+        $limit: 10,
+      },
+    ]);
 
     res.status(200).json({
       success: true,
       count: users.length,
-      users
+      users,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
-
 
 const userProfileImage = async (req, res) => {
   try {
@@ -617,7 +636,7 @@ const userProfileImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "No image uploaded"
+        message: "No image uploaded",
       });
     }
 
@@ -625,25 +644,23 @@ const userProfileImage = async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { $set: { profilephoto : imagePath } },
-      { new: true }
+      { $set: { profilephoto: imagePath } },
+      { new: true },
     );
 
     res.status(200).json({
       success: true,
       message: "Profile image uploaded",
-      photos: user.photos
+      photos: user.photos,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
-
 
 module.exports = {
   onboarding,
@@ -656,5 +673,5 @@ module.exports = {
   sendEmail,
   getUserAnalytics,
   getRecommendedProfiles,
-  userProfileImage
+  userProfileImage,
 };
