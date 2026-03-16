@@ -106,73 +106,65 @@ exports.getDateRequestsForReceiver = async (req, res) => {
 
 exports.updateDateRequestStatus = async (req, res) => {
   try {
-    // 1. Dono IDs req.query se lein
-    const { id, slotId } = req.query; 
+    const { id, slotId } = req.query;
     const { status, slotStatus } = req.body;
-    console.log("Received update request with query:", req.query, "and body:", req.body);
 
-    // 2. Validation: Main ID hona zaroori hai
+    console.log("Query:", req.query);
+    console.log("Body:", req.body);
+
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Main ID is required in query parameters (?id=...)",
+        message: "Document id is required in query",
       });
     }
 
-    // 3. Validation: Main status body mein hona zaroori hai
     if (!status) {
       return res.status(400).json({
         success: false,
-        message: "Status is required in request body",
+        message: "Main document status is required",
       });
     }
 
-    const allowedStatus = ["submitted", "accepted", "rejected"];
-    if (!allowedStatus.includes(status)) {
+    const allowedMainStatus = ["submitted", "accepted", "rejected"];
+    if (!allowedMainStatus.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status. Must be: submitted, accepted, or rejected",
+        message: "Invalid main status",
       });
     }
 
-    // 4. Update Filter aur Data taiyar karein
-    let filter = { _id: id }; // Base filter (Main Document)
-    let updateData = { status: status }; // Base update (Main Status)
+    let filter = { _id: id };
+    let updateData = {
+      status: status,
+    };
 
-    // 5. Agar slotId query mein di gayi hai, toh array update logic add karein
     if (slotId) {
-      filter["dateSlots._id"] = slotId; // Filter mein slot ID add karein
+      filter["dateSlots._id"] = slotId;
 
-      // "dateSlots.$" positional operator use karke specific slot fields set karein
-      if (slotDate) updateData["dateSlots.$.date"] = slotDate;
-      if (slotDay) updateData["dateSlots.$.day"] = slotDay;
-      if (slotTime) updateData["dateSlots.$.time"] = slotTime;
-      if (slotStatus) updateData["dateSlots.$.status"] = slotStatus;
+      if (slotStatus) {
+        updateData["dateSlots.$.status"] = slotStatus;
+      }
     }
 
-    // 6. Database Update Operation
     const updatedRequest = await DateRequest.findOneAndUpdate(
       filter,
       { $set: updateData },
       { new: true, runValidators: true }
     );
 
-    // 7. Check if document was found
     if (!updatedRequest) {
       return res.status(404).json({
         success: false,
-        message: "Date request or specific Slot not found with provided IDs",
+        message: "Document or slot not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: slotId 
-        ? "Main status and Slot details updated successfully" 
-        : "Main status updated successfully",
+      message: "Document status and slot status updated successfully",
       data: updatedRequest,
     });
-
   } catch (error) {
     console.error("Error updating date request:", error);
     return res.status(500).json({

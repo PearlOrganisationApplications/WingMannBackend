@@ -3,10 +3,19 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const trackTraffic = require('./middlewares/traffic');
+const admin = require("firebase-admin");
+// const serviceAccount = require("./firebase-service-account.json");
 dotenv.config();
 connectDB();
 
 const app = express();
+
+
+
+// Initialize Firebase Admin SDK
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount)
+// });
 
 // Middlewares
 app.use(

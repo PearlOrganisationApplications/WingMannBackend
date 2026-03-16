@@ -50,7 +50,9 @@ const getRequestsForReceiver = async (req, res) => {
 const changeStatusofCallRequest = async (req, res) => {
   try {
     const { receiverId, senderId } = req.query;
-    const { status } = req.body;
+    const { status,
+      // senderFcmToken 
+      } = req.body;
 
     const request = await CallRequest.findOneAndUpdate(
       { receiverId, senderId },
