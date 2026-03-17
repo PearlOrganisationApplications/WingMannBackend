@@ -51,6 +51,7 @@ const userSchema = new mongoose.Schema(
     },
     profilephoto: {
       type: String,
+      default: "https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-portrait-176256935.jpg",
     },
 
     preferences: {
@@ -72,6 +73,7 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "interviewer", "user"],
       default: "user",
     },
+    fcmToken:String
   },
   { timestamps: true },
 );

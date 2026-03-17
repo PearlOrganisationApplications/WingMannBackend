@@ -7,18 +7,16 @@ const { welcomeTemplate } = require("../utils/emailTemplates");
 const matchProfileSchema = require("../models/admin.photoupload");
 const callRequest = require("../models/callRequest");
 const DateRequest = require("../models/dateRequest");
+const Notification = require("../models/notification");
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
     console.log("req. bofy : ", req.body);
     const user = await User.create(req.body);
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
-
     res.status(201).json({
       success: true,
       _id: user._id,
-      token,
     });
   } catch (err) {
     next(err);
@@ -202,7 +200,9 @@ const getUserById = async (req, res, next) => {
 
     // const date_request = await  DateRequest.find({receiverId:req.params.id}).populate('senderId').select("-senderId, -updatedAt")
 
-    const date_request_received = await DateRequest.find({ receiverId: req.params.id })
+    const date_request_received = await DateRequest.find({
+      receiverId: req.params.id,
+    })
       .populate("senderId")
       .select("-updatedAt");
 
@@ -214,7 +214,25 @@ const getUserById = async (req, res, next) => {
       (req) => req.status == "submitted",
     );
 
-    const date_request_sent = await DateRequest.find({ senderId: req.params.id })
+    const date_request_sent = await DateRequest.find({
+      senderId: req.params.id,
+    });
+
+    // const callRequest_notifications = await Notification.find({ userId: req.params.id }).sort({ createdAt: -1 });
+
+    // const dateRequest_notifications = await Notification.find({ userId: req.params.id }).sort({ createdAt: -1 });
+
+    const notifications = await Notification.find({ userId: req.params.id }).sort({
+      createdAt: -1,
+    });
+
+    const callRequest_notifications = notifications.filter(
+      (n) => n.type === "call request",
+    );
+
+    const dateRequest_notifications = notifications.filter(
+      (n) => n.type === "date request",
+    );
 
     res.json({
       success: true,
@@ -224,7 +242,10 @@ const getUserById = async (req, res, next) => {
       call_request,
       date_accepted,
       date_requested,
-      date_request_sent
+      date_request_sent,
+      callRequest_notifications,
+      dateRequest_notifications,
+      notifications
     });
   } catch (err) {
     next(err);

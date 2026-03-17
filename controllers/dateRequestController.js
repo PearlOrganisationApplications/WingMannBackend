@@ -1,5 +1,7 @@
 const DateRequest = require("../models/dateRequest");
-
+const Notification = require('../models/notification');
+const User = require("../models/user.model");
+const sendPushNotification = require("../utils/sendPushNotification");
 exports.createDateRequest = async (req, res) => {
   try {
     const {
@@ -104,14 +106,18 @@ exports.getDateRequestsForReceiver = async (req, res) => {
 };
 
 
+
+
+
 exports.updateDateRequestStatus = async (req, res) => {
   try {
-    const { id, slotId } = req.query;
+    const { id, slotId, senderId, receiverId } = req.query;
     const { status, slotStatus } = req.body;
 
     console.log("Query:", req.query);
     console.log("Body:", req.body);
 
+    // ✅ Validations
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -134,10 +140,9 @@ exports.updateDateRequestStatus = async (req, res) => {
       });
     }
 
+    // ✅ Prepare update
     let filter = { _id: id };
-    let updateData = {
-      status: status,
-    };
+    let updateData = { status };
 
     if (slotId) {
       filter["dateSlots._id"] = slotId;
@@ -147,6 +152,7 @@ exports.updateDateRequestStatus = async (req, res) => {
       }
     }
 
+    // ✅ Update DB
     const updatedRequest = await DateRequest.findOneAndUpdate(
       filter,
       { $set: updateData },
@@ -160,13 +166,57 @@ exports.updateDateRequestStatus = async (req, res) => {
       });
     }
 
+    // 🔥 NOTIFICATION LOGIC STARTS HERE
+
+    // 1. Get sender (who will receive notification)
+    const sender = await User.findById(senderId)
+      .select("fcmToken name")
+      .lean();
+
+    // 2. Get receiver (who accepted/rejected)
+    const receiver = await User.findById(receiverId)
+      .select("name profilephoto")
+      .lean();
+
+    // 3. Prepare message
+    const title = "Date request status updated";
+    const body = `Your date request has been ${status} by ${receiver?.name}`;
+
+    // 4. Save notification (for bell UI 🔔)
+    await Notification.create({
+      userId: senderId,
+      title,
+      body,
+      type: "date request",
+      isRead: false,
+      AcceptingPersonImage: receiver?.profilephoto,
+    });
+
+    // 5. Send push notification
+    if (sender?.fcmToken) {
+      await sendPushNotification({
+        token: sender.fcmToken,
+        title,
+        body,
+        data: {
+          senderId: String(senderId),
+          receiverId: String(receiverId),
+          status: String(status),
+          type: "date_request_status",
+        },
+      });
+    }
+
+    // 🔥 RESPONSE
     return res.status(200).json({
       success: true,
       message: "Document status and slot status updated successfully",
       data: updatedRequest,
     });
+
   } catch (error) {
     console.error("Error updating date request:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
