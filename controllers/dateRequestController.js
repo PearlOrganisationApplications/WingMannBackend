@@ -180,7 +180,7 @@ exports.updateDateRequestStatus = async (req, res) => {
 
     // 3. Prepare message
     const title = "Date request status updated";
-    const body = `Your date request has been ${status} by ${receiver?.name}`;
+    const body = `✅ Your date request has been ${status} by ${receiver?.name}`;
 
     // 4. Save notification (for bell UI 🔔)
     await Notification.create({
@@ -190,6 +190,7 @@ exports.updateDateRequestStatus = async (req, res) => {
       type: "date request",
       isRead: false,
       AcceptingPersonImage: receiver?.profilephoto,
+      receiverId: receiverId,
     });
 
     // 5. Send push notification

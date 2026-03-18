@@ -6,27 +6,83 @@ const Notification = require("../models/notification");
 const createCallRequest = async (req, res) => {
   try {
     const { senderId, receiverId, requestType } = req.body;
-    console.log(senderId, receiverId, requestType);
 
+    // ✅ 1. Validation
     if (!senderId || !receiverId || !requestType) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
     }
 
+    // ✅ 2. Prevent duplicate request (optional but recommended)
+    const existing = await CallRequest.findOne({ senderId, receiverId });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "Request already sent",
+      });
+    }
+
+    // ✅ 3. Create Call Request
     const newRequest = await CallRequest.create({
       senderId,
       receiverId,
       requestType,
     });
 
+    // ✅ 4. Get users
+    const sender = await User.findById(senderId)
+      .select("name")
+      .lean();
+
+    const receiver = await User.findById(receiverId)
+      .select("fcmToken name profilephoto")
+      .lean();
+
+    // ✅ 5. Notification content
+    const title = "New Call Request";
+    const body = `📞 ${sender?.name} sent you a call request`;
+
+    // ✅ 6. Save notification in DB (same structure as your status API)
+    await Notification.create({
+      userId: receiverId, // 🔥 important: receiver gets notification
+      title,
+      body,
+      type: "call request",
+      isRead: false,
+      AcceptingPersonImage: sender?.profilephoto || "",
+      receiverId: senderId, // who triggered it
+    });
+
+    // ✅ 7. Send push notification
+    if (receiver?.fcmToken) {
+      await sendPushNotification({
+        token: receiver.fcmToken,
+        title,
+        body,
+        data: {
+          senderId: String(senderId),
+          receiverId: String(receiverId),
+          type: "call_request_create",
+        },
+      });
+    }
+
+    // ✅ 8. Response
     res.status(201).json({
       success: true,
       message: "Call request created successfully",
       data: newRequest,
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Error in createCallRequest:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -82,7 +138,7 @@ const changeStatusofCallRequest = async (req, res) => {
 
     // 3. Prepare notification content
     const title = "Call request status updated";
-    const body = `Your call request has been ${status} by ${receiver.name} `;
+    const body = `📞Your call request has been ${status} by ${receiver.name} `;
 
     // 4. Save notification in DB (for UI bell 🔔)
     await Notification.create({
@@ -92,7 +148,9 @@ const changeStatusofCallRequest = async (req, res) => {
       type: "call request",
       isRead: false,
       AcceptingPersonImage: receiver?.profilephoto,
+      receiverId: receiverId,
     });
+
 
     // 5. Send push notification (if token exists)
     if (sender?.fcmToken) {

@@ -252,6 +252,23 @@ const getUserById = async (req, res, next) => {
   }
 };
 
+const getUserProfileforNotifyById = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    res.json({
+      success: true,
+      data: user,
+    });
+  }catch (err) {
+    next(err);
+  }}
+
 // ✅ UPDATE USER
 const updateUser = async (req, res, next) => {
   try {
@@ -695,4 +712,5 @@ module.exports = {
   getUserAnalytics,
   getRecommendedProfiles,
   userProfileImage,
+  getUserProfileforNotifyById
 };

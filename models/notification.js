@@ -8,6 +8,7 @@ const notificationSchema = new mongoose.Schema(
     type: { type: String, enum: ["call request", "date request"] },
     isRead: { type: Boolean, default: false },
     AcceptingPersonImage:String,
+    receiverId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
