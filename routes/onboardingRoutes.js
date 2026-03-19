@@ -15,7 +15,8 @@ const {
     userProfileImage,
     getUserProfileforNotifyById,
     markNotificationsAsRead,
-    getUnReadNotification
+    getUnReadNotification,
+    checkUserInDB
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
@@ -41,6 +42,10 @@ router.get('/user-profile-recommendation/:userId',getRecommendedProfiles );
 router.post('/user-profile-image/:userId',upload.single('profilephoto'), userProfileImage);
 router.patch("/read-notification/:doc_Id", markNotificationsAsRead);
 router.get('/get-Unread-Notfi/:userId', getUnReadNotification)
+
+
+// POST /api/check-user
+router.post('/check', checkUserInDB)
 
 
 // UPDATE

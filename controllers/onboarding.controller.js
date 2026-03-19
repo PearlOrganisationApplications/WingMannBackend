@@ -754,6 +754,19 @@ const getUnReadNotification = async (req, res) => {
   }
 };
 
+
+const checkUserInDB = async (req, res)=>{
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (user) {
+    return res.json({ exists: true , success:true});
+  } else {
+    return res.json({ exists: false ,success:false});
+  }
+}
+
 module.exports = {
   onboarding,
   getAllUsers,
@@ -769,4 +782,5 @@ module.exports = {
   getUserProfileforNotifyById,
   markNotificationsAsRead,
   getUnReadNotification,
+  checkUserInDB
 };
