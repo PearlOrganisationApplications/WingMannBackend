@@ -8,6 +8,7 @@ const matchProfileSchema = require("../models/admin.photoupload");
 const callRequest = require("../models/callRequest");
 const DateRequest = require("../models/dateRequest");
 const Notification = require("../models/notification");
+const mongoose = require('mongoose');
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
@@ -201,9 +202,9 @@ const getUserById = async (req, res, next) => {
     // const date_request = await  DateRequest.find({receiverId:req.params.id}).populate('senderId').select("-senderId, -updatedAt")
 
     const date_request_received = await DateRequest.find({
-      receiverId: req.params.id,
+      $or: [{ receiverId: req.params.id }, { senderId: req.params.id }],
     })
-      .populate("senderId")
+      .populate("senderId receiverId")
       .select("-updatedAt");
 
     const date_accepted = date_request_received.filter(
@@ -222,7 +223,9 @@ const getUserById = async (req, res, next) => {
 
     // const dateRequest_notifications = await Notification.find({ userId: req.params.id }).sort({ createdAt: -1 });
 
-    const notifications = await Notification.find({ userId: req.params.id }).sort({
+    const notifications = await Notification.find({
+      userId: req.params.id,
+    }).sort({
       createdAt: -1,
     });
 
@@ -245,7 +248,7 @@ const getUserById = async (req, res, next) => {
       date_request_sent,
       callRequest_notifications,
       dateRequest_notifications,
-      notifications
+      notifications,
     });
   } catch (err) {
     next(err);
@@ -265,9 +268,10 @@ const getUserProfileforNotifyById = async (req, res, next) => {
       success: true,
       data: user,
     });
-  }catch (err) {
+  } catch (err) {
     next(err);
-  }}
+  }
+};
 
 // ✅ UPDATE USER
 const updateUser = async (req, res, next) => {
@@ -700,6 +704,56 @@ const userProfileImage = async (req, res) => {
   }
 };
 
+const markNotificationsAsRead = async (req, res) => {
+  try {
+    const { doc_Id } = req.params;
+
+    const notification = await Notification.findOneAndUpdate(
+      { _id: doc_Id },
+      { isRead: true },
+      { new: true },
+    );
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: "Notification not found",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Notification marked as read",
+      data: notification,
+    });
+  } catch (error) {
+    console.error("Error in markNotificationsAsRead:", error);
+  }
+};
+
+const getUnReadNotification = async (req, res) => {
+  const { userId } = req.params;
+  console.log('userId :', userId)
+
+  try {
+    console.log("api get hit");
+
+    const count = await Notification.countDocuments({
+      userId: new mongoose.Types.ObjectId(userId), // ✅ FIX
+      isRead: false,
+    });
+
+   
+   
+
+    res.json({
+      success: true,
+      count,
+    });
+    console.log(count)
+  } catch (err) {
+    console.log(err);
+  }
+};
+
 module.exports = {
   onboarding,
   getAllUsers,
@@ -712,5 +766,7 @@ module.exports = {
   getUserAnalytics,
   getRecommendedProfiles,
   userProfileImage,
-  getUserProfileforNotifyById
+  getUserProfileforNotifyById,
+  markNotificationsAsRead,
+  getUnReadNotification,
 };

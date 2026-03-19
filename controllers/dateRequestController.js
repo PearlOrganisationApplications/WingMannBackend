@@ -13,17 +13,17 @@ exports.createDateRequest = async (req, res) => {
       mealType,
       payType,
       dateSlots,
-      status // Body se status le rahe hain
+      status
     } = req.body;
 
-    // 1. Mandatory Fields Validation
+    // ✅ 1. Validation
     if (!senderId || !receiverId || !locationType || !mealType || !payType || !dateSlots) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: senderId, receiverId, locationType, mealType, payType, or dateSlots",
+        message: "Missing required fields",
       });
     }
-    
+
     if (!Array.isArray(dateSlots) || dateSlots.length === 0) {
       return res.status(400).json({
         success: false,
@@ -32,37 +32,69 @@ exports.createDateRequest = async (req, res) => {
     }
 
     const finalMealType = Array.isArray(mealType) ? mealType : [mealType];
-    if (finalMealType.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "mealType must have at least one value",
-      });
-    }
 
-   
     const allowedStatus = ["submitted", "accepted", "rejected"];
-    let finalStatus = status || "submitted"; 
+    let finalStatus = status || "submitted";
 
     if (status && !allowedStatus.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status. Must be: submitted, accepted, or rejected",
+        message: "Invalid status",
       });
     }
 
-    // 5. Create Request
+    // ✅ 2. Create Date Request
     const newRequest = await DateRequest.create({
       senderId,
       receiverId,
-      requestType: requestType || "date req", 
+      requestType: requestType || "date req",
       locationType,
       budget: budget || null,
       mealType: finalMealType,
       payType,
-      dateSlots, 
+      dateSlots,
       status: finalStatus
     });
 
+    // ✅ 3. Get Users
+    const sender = await User.findById(senderId)
+      .select("name profilephoto")
+      .lean();
+
+    const receiver = await User.findById(receiverId)
+      .select("fcmToken name profilephoto")
+      .lean();
+
+    // ✅ 4. Notification Content
+    const title = "New Date Request";
+    const body = `💌 You have a date request from ${sender?.name}`;
+
+    // ✅ 5. Save Notification in DB
+    await Notification.create({
+      userId: receiverId,
+      title,
+      body,
+      type: "date request",
+      isRead: false,
+      AcceptingPersonImage: sender?.profilephoto || "",
+      receiverId: senderId,
+    });
+
+    // ✅ 6. Push Notification
+    if (receiver?.fcmToken) {
+      await sendPushNotification({
+        token: receiver.fcmToken,
+        title,
+        body,
+        data: {
+          senderId: String(senderId),
+          receiverId: String(receiverId),
+          type: "date_request_create",
+        },
+      });
+    }
+
+    // ✅ 7. Response
     return res.status(201).json({
       success: true,
       message: "Date request created successfully",
@@ -71,9 +103,9 @@ exports.createDateRequest = async (req, res) => {
 
   } catch (error) {
     console.error("Error creating date request:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: error.message || "Internal Server Error" 
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error"
     });
   }
 };

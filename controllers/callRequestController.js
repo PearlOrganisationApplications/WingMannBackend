@@ -33,7 +33,7 @@ const createCallRequest = async (req, res) => {
 
     // ✅ 4. Get users
     const sender = await User.findById(senderId)
-      .select("name")
+      .select("name profilephoto")
       .lean();
 
     const receiver = await User.findById(receiverId)
@@ -42,10 +42,10 @@ const createCallRequest = async (req, res) => {
 
     // ✅ 5. Notification content
     const title = "New Call Request";
-    const body = `📞 ${sender?.name} sent you a call request`;
+    const body = `📞 you  have a call request from ${sender?.name}`;
 
     // ✅ 6. Save notification in DB (same structure as your status API)
-    await Notification.create({
+     const notifi = await Notification.create({
       userId: receiverId, // 🔥 important: receiver gets notification
       title,
       body,
@@ -54,6 +54,9 @@ const createCallRequest = async (req, res) => {
       AcceptingPersonImage: sender?.profilephoto || "",
       receiverId: senderId, // who triggered it
     });
+   
+    console.log('Npotitcation saved : ');
+    console.log('now push notifuiation to firease')
 
     // ✅ 7. Send push notification
     if (receiver?.fcmToken) {
