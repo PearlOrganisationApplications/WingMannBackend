@@ -1,7 +1,8 @@
 const Interviewer = require("../models/interviewer.model");
 const Booking = require("../models/booking.model");
+const Notification = require("../models/notification");
 const User = require("../models/user.model"); // optional if you want to fetch user info
-
+const sendPushNotification = require("../utils/sendPushNotification");
 // Helper: generate pseudo Google Meet link
 const generateMeetLink = () => {
   const randomCode = Math.random().toString(36).substring(2, 11); // 9-char random
@@ -12,37 +13,55 @@ const generateMeetLink = () => {
 const bookSlot = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { userName, userEmail, day, date, time } = req.body;
-    console.log(userName, userEmail, day, date, time);
+    const { userName, userEmail, day, date, time, interviewerId } = req.body;
 
-    // Validate required fields
-    if (!userId || !userName || !userEmail || !day || !date || !time) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+    console.log(userName, userEmail, day, date, time, interviewerId);
+
+    // ✅ Validation
+    if (
+      !userId ||
+      !userName ||
+      !userEmail ||
+      !day ||
+      !date ||
+      !time ||
+      !interviewerId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
     }
-    const cleanedTime = time.split(" ")[0]; 
- 
 
-    // 1️⃣ Find all interviewers with this slot available
-    const interviewers = await Interviewer.find({
-      availability: { $elemMatch: { day, date: date, times: { $in: [cleanedTime] }  } },
+    const cleanedTime = time.split(" ")[0]; // "14:00"
+
+    // 1️⃣ Find interviewer by ID
+    const interviewer = await Interviewer.findOne({ user: interviewerId });
+
+    if (!interviewer) {
+      return res.status(404).json({
+        success: false,
+        message: "Interviewer not found",
+      });
+    }
+
+    // 2️⃣ Check availability
+    const slotExists = interviewer.availability.some((slot) => {
+      return (
+        slot.day === day &&
+        new Date(slot.date).toISOString() === new Date(date).toISOString() &&
+        slot.times.includes(cleanedTime)
+      );
     });
 
-    if (interviewers.length === 0) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "No interviewers available for this slot",
-        });
+    if (!slotExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected slot is no longer available",
+      });
     }
 
-    // 2️⃣ Randomly pick one interviewer
-    const randomIndex = Math.floor(Math.random() * interviewers.length);
-    const selectedInterviewer = interviewers[randomIndex];
-
-    // 3️⃣ Generate pseudo Google Meet link
+    // 3️⃣ Generate meet link
     const meetLink = generateMeetLink();
 
     // 4️⃣ Save booking
@@ -53,22 +72,13 @@ const bookSlot = async (req, res) => {
       day,
       date,
       time,
-      interviewer: selectedInterviewer.user,
+      interviewer: interviewer.user,
       meetLink,
     });
 
-    // Optional: remove booked time from interviewer's availability
-    selectedInterviewer.availability = selectedInterviewer.availability.map(
-      (slot) => {
-        if (slot.day === day && slot.date === date) {
-          slot.times = slot.times.filter((t) => t !== time);
-        }
-        return slot;
-      },
-    );
-    await selectedInterviewer.save();
+    await interviewer.save();
 
-    // 5️⃣ Include interviewer _id and name in response
+    // 6️⃣ Response
     res.json({
       success: true,
       message: "Slot booked successfully",
@@ -82,19 +92,20 @@ const bookSlot = async (req, res) => {
           date: booking.date,
           time: booking.time,
           interviewer: {
-            _id: selectedInterviewer._id,
-            name: selectedInterviewer.name,
+            _id: interviewer._id,
+            name: interviewer.name,
           },
           meetLink: booking.meetLink,
-          createdAt: booking.createdAt,
-          updatedAt: booking.updatedAt,
         },
         meetLink,
       },
     });
   } catch (error) {
     console.log("Booking error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -122,7 +133,7 @@ const getUserBookings = async (req, res) => {
     }
 
     // Find all bookings for this user
-    const bookings = await Booking.find({interviewer:userId }).populate(
+    const bookings = await Booking.find({ interviewer: userId }).populate(
       "interviewer",
       "user availability",
     );
@@ -144,40 +155,37 @@ const getUserBookings = async (req, res) => {
   }
 };
 
-const getAllInterScheduled = async (req, res)=>{
-  try{
-    const {userId } = req.params;
-    const data = await Booking.find({interviewer:userId});
+const getAllInterScheduled = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const data = await Booking.find({ interviewer: userId });
     res.status(200).json({
-      success:true,
-      message: "get all interview" ,
-      inteview : data
-    })
-  }catch(error){
+      success: true,
+      message: "get all interview",
+      inteview: data,
+    });
+  } catch (error) {
     console.log(error);
-     res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
-}
-const getSpecificInterview= async (req, res)=>{
-  try{
-    const {bookingId} =req.params;
-     const data = await Booking
-  .findOne({ _id: bookingId })
-  .populate('interviewer', 'name email gender location -_id')
-  .populate('userId');
+};
+const getSpecificInterview = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const data = await Booking.findOne({ _id: bookingId })
+      .populate("interviewer", "name email gender location -_id")
+      .populate("userId");
     res.status(200).json({
-      success:true,
-      message: "interview detail" ,
-      inteview : data
-    })
-    console.log(data)
-
-
-  }catch(error){
+      success: true,
+      message: "interview detail",
+      inteview: data,
+    });
+    console.log(data);
+  } catch (error) {
     console.log(error);
-     res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
-}
+};
 
 const postInterviewStatus = async (req, res) => {
   console.log("running ............");
@@ -185,8 +193,6 @@ const postInterviewStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { status, rejectionReason } = req.body;
-
-    console.log("booking:", bookingId, "status:", status);
 
     if (status === "rejected" && !rejectionReason) {
       return res.status(400).json({
@@ -205,8 +211,8 @@ const postInterviewStatus = async (req, res) => {
       updateData,
       {
         new: true,
-        runValidators: true, // 🔥 VERY IMPORTANT
-      }
+        runValidators: true,
+      },
     );
 
     if (!updatedBooking) {
@@ -216,15 +222,75 @@ const postInterviewStatus = async (req, res) => {
       });
     }
 
-    console.log("updated:", updatedBooking);
+    // ✅ 🔥 NEW: Fetch User + Interviewer
+    const user = await User.findById(updatedBooking.userId)
+      .select("fcmToken name profilephoto")
+      .lean();
 
+    const interviewer = await User.findById(updatedBooking.interviewer)
+      .select("name profilephoto")
+      .lean();
+
+    // ✅ 🔥 Notification Content
+    let title = "Interview Update";
+    let body = "";
+
+    if (status === "accepted") {
+      // body = `✅ Your interview has been accepted by ${interviewer?.name}. Join here: ${updatedBooking?.meetLink}`;
+      body = `
+  <p>
+    ✅ Your interview has been accepted by ${interviewer?.name}.
+    <a 
+      href="${updatedBooking?.meetLink}" 
+      target="_blank" 
+      style="color: blue; text-decoration: underline;"
+    >
+      Join here
+    </a>
+  </p>
+`;
+    } else if (status === "rejected") {
+      body = `❌ Your interview was rejected by ${interviewer?.name}`;
+    } else {
+      body = `📢 Interview status updated to ${status}`;
+    }
+
+    // ✅ 🔥 Save Notification
+    await Notification.create({
+      userId: updatedBooking.userId,
+      title,
+      body,
+      type: "interview_status",
+      isRead: false,
+      AcceptingPersonImage: interviewer?.profilephoto || "",
+      receiverId: updatedBooking.interviewer,
+    });
+
+    console.log("Notification saved");
+
+    // ✅ 🔥 Push Notification
+    if (user?.fcmToken) {
+      await sendPushNotification({
+        token: user.fcmToken,
+        title,
+        body: `✅ Interview accepted by ${interviewer?.name}.`,
+        data: {
+          bookingId: String(bookingId),
+          type: "interview_status_update",
+          status: status,
+        },
+      });
+    }
+
+    // ✅ Response
     res.status(200).json({
       success: true,
       message: "Interview status updated successfully",
       booking: updatedBooking,
     });
-
   } catch (error) {
+    console.error("Error:", error);
+
     res.status(500).json({
       success: false,
       message: error.message,
@@ -232,4 +298,11 @@ const postInterviewStatus = async (req, res) => {
   }
 };
 
-module.exports = { bookSlot, getBookings, getUserBookings, getAllInterScheduled, getSpecificInterview, postInterviewStatus };
+module.exports = {
+  bookSlot,
+  getBookings,
+  getUserBookings,
+  getAllInterScheduled,
+  getSpecificInterview,
+  postInterviewStatus,
+};
