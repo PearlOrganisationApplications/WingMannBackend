@@ -94,31 +94,31 @@ const updateSpecificAvailability = async (req, res) => {
 
         // Find and Update specific array element
         const updatedInterviewer = await Interviewer.findOneAndUpdate(
-            { 
-                user: userId, 
+            {
+                user: userId,
                 "availability._id": slotId // Pehle user ko dhundo phir uske andar specific slot ki ID
             },
-            { 
-                $set: { 
+            {
+                $set: {
                     "availability.$.day": day,
                     "availability.$.date": date,
                     "availability.$.times": times
-                } 
+                }
             },
             { new: true } // Updated data return karega
         );
 
         if (!updatedInterviewer) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Interviewer or Slot not found' 
+            return res.status(404).json({
+                success: false,
+                message: 'Interviewer or Slot not found'
             });
         }
 
-        res.json({ 
-            success: true, 
-            message: 'Specific slot updated', 
-            data: updatedInterviewer.availability 
+        res.json({
+            success: true,
+            message: 'Specific slot updated',
+            data: updatedInterviewer.availability
         });
 
     } catch (error) {
@@ -128,49 +128,49 @@ const updateSpecificAvailability = async (req, res) => {
 
 const deleteSpecificSlot = async (req, res) => {
     try {
-       
-        const { userId, slotId } = req.query; 
+
+        const { userId, slotId } = req.query;
 
         // 1. Validation: Check karein ki dono IDs provide ki gayi hain
         if (!userId || !slotId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Both userId and slotId are required in query' 
+            return res.status(400).json({
+                success: false,
+                message: 'Both userId and slotId are required in query'
             });
         }
 
         // 2. ObjectId format check karein (taki CastError na aaye)
         const mongoose = require('mongoose');
         if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(slotId)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Invalid User ID or Slot ID format' 
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid User ID or Slot ID format'
             });
         }
 
         // 3. $pull operator se array element remove karein
         const updatedInterviewer = await Interviewer.findOneAndUpdate(
-            { user: userId }, 
-            { 
-                $pull: { 
-                    availability: { _id: slotId } 
-                } 
+            { user: userId },
+            {
+                $pull: {
+                    availability: { _id: slotId }
+                }
             },
             { new: true } // Updated data return karega
         );
 
         // 4. Agar document nahi mila
         if (!updatedInterviewer) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Interviewer document not found' 
+            return res.status(404).json({
+                success: false,
+                message: 'Interviewer document not found'
             });
         }
 
-        res.json({ 
-            success: true, 
-            message: 'Slot deleted successfully', 
-            data: updatedInterviewer.availability 
+        res.json({
+            success: true,
+            message: 'Slot deleted successfully',
+            data: updatedInterviewer.availability
         });
 
     } catch (error) {
@@ -178,4 +178,56 @@ const deleteSpecificSlot = async (req, res) => {
     }
 };
 
-module.exports = { addAvailability, getAvailability,getAllAvailability, updateSpecificAvailability , deleteSpecificSlot};
+
+const getAllAvailabilityByDate = async (req, res) => {
+    try {
+        const { date } = req.query;
+
+        if (!date) {
+            return res.status(400).json({ success: false, message: "Date is required" });
+        }
+
+        const searchDate = new Date(date);
+        const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
+
+        const interviewers = await Interviewer.find({
+            "availability.date": {
+                $gte: startOfDay,
+                $lte: endOfDay
+            }
+        }).populate('user', 'name email');
+
+        const result = [];
+
+        interviewers.forEach(interviewer => {
+            const targetSlot = interviewer.availability.find(slot => {
+                const slotDate = new Date(slot.date).toISOString().split('T')[0];
+                const inputDate = new Date(date).toISOString().split('T')[0];
+                return slotDate === inputDate;
+            });
+
+            if (targetSlot) {
+                result.push({
+                    interviewerId: interviewer.user._id,
+                    interviewerName: interviewer.user.name,
+                    interviewerEmail: interviewer.user.email,
+                    day: targetSlot.day,
+                    date: targetSlot.date,
+                    times: targetSlot.times
+                });
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            selectedDate: date,
+            totalInterviewers: result.length,
+            data: result
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+module.exports = { addAvailability, getAvailability, getAllAvailability, updateSpecificAvailability, deleteSpecificSlot, getAllAvailabilityByDate };
