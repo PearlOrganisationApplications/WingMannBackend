@@ -761,10 +761,24 @@ const checkUserInDB = async (req, res)=>{
   const user = await User.findOne({ email });
 
   if (user) {
-    return res.json({ exists: true , success:true});
+    return res.json({ exists: true , success:true,user});
   } else {
     return res.json({ exists: false ,success:false});
   }
+}
+
+const checkPhoneNumber = async (req, res)=>{
+  const { phonenumber } = req.body;
+  const user = await User.findOne({ phonenumber });
+  console.log('user from phone : ', user)
+
+  if (user) {
+    return res.json({ exists: true , success:true,user});
+  } else {
+    return res.json({ exists: false ,success:false});
+    
+  }
+
 }
 
 module.exports = {
@@ -782,5 +796,6 @@ module.exports = {
   getUserProfileforNotifyById,
   markNotificationsAsRead,
   getUnReadNotification,
-  checkUserInDB
+  checkUserInDB,
+  checkPhoneNumber
 };
