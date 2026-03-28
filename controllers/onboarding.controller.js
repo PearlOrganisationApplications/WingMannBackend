@@ -8,7 +8,7 @@ const matchProfileSchema = require("../models/admin.photoupload");
 const callRequest = require("../models/callRequest");
 const DateRequest = require("../models/dateRequest");
 const Notification = require("../models/notification");
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
@@ -212,9 +212,9 @@ const getUserById = async (req, res, next) => {
     );
 
     const date_requested = date_request_received.filter(
-      (req) => req.status == "submitted",
+      (item) =>
+        item.status === "submitted" && item.senderId?._id.toString() !== req.params.id,
     );
-
     const date_request_sent = await DateRequest.find({
       senderId: req.params.id,
     });
@@ -731,7 +731,7 @@ const markNotificationsAsRead = async (req, res) => {
 
 const getUnReadNotification = async (req, res) => {
   const { userId } = req.params;
-  console.log('userId :', userId)
+  console.log("userId :", userId);
 
   try {
     console.log("api get hit");
@@ -741,45 +741,40 @@ const getUnReadNotification = async (req, res) => {
       isRead: false,
     });
 
-   
-   
-
     res.json({
       success: true,
       count,
     });
-    console.log(count)
+    console.log(count);
   } catch (err) {
     console.log(err);
   }
 };
 
-
-const checkUserInDB = async (req, res)=>{
+const checkUserInDB = async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
 
   if (user) {
-    return res.json({ exists: true , success:true,user});
+    return res.json({ exists: true, success: true, user });
   } else {
-    return res.json({ exists: false ,success:false});
+    return res.json({ exists: false, success: false });
   }
-}
+};
 
-const checkPhoneNumber = async (req, res)=>{
+const checkPhoneNumber = async (req, res) => {
   const { phonenumber } = req.body;
+  console.log("phonenumber :", phonenumber);
   const user = await User.findOne({ phonenumber });
-  console.log('user from phone : ', user)
+  console.log("user from phone : ", user);
 
   if (user) {
-    return res.json({ exists: true , success:true,user});
+    return res.json({ exists: true, success: true, user });
   } else {
-    return res.json({ exists: false ,success:false});
-    
+    return res.json({ exists: false, success: false });
   }
-
-}
+};
 
 module.exports = {
   onboarding,
@@ -797,5 +792,5 @@ module.exports = {
   markNotificationsAsRead,
   getUnReadNotification,
   checkUserInDB,
-  checkPhoneNumber
+  checkPhoneNumber,
 };

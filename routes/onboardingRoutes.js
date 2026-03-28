@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-
+const { generateAgoraToken } = require("../controllers/generateToken");
 const {
     onboarding,
     getAllUsers,
@@ -22,10 +22,12 @@ const {
 
 const upload = require('../middlewares/upload');
 
+//Agore
+router.post("/token", generateAgoraToken);
 
 router.post('/submit/:userId', submitQuiz);
 router.post('/uploadPhotosAndPreferences/:_id', upload.array('photos'), uploadPhotosAndPreferences);
-router.post('/user/login', loginUser )
+router.post('/user/login', loginUser );
 
 // CREATE
 router.post('/onboarding', onboarding);
