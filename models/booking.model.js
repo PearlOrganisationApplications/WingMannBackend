@@ -16,8 +16,8 @@ const bookingSchema = new mongoose.Schema(
     meetLink: { type: String, required: true },
     status: {
       type: String,
-      enum: ["submitted", "accepted", "rejected"],
-      default: "submitted",
+      enum: ["submitted", "accepted", "rejected", "pending"],
+      default: "pending",
     },
 
     rejectionReason: {

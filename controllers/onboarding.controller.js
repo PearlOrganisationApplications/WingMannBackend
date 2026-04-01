@@ -110,6 +110,66 @@ const sendEmail = async (req, res) => {
   }
 };
 
+
+const Updateprofile = async (req, res) => {
+  const { userId } = req.params;
+  const { selected, name, occupationWork } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ✅ 1. Update Interests
+    if (selected && Array.isArray(selected)) {
+      const existingUserInterests = user.interest || [];
+
+      const updatedInterests = [
+        ...new Map(
+          [...existingUserInterests, ...selected].map((item) => [
+            item.toLowerCase(),
+            item,
+          ])
+        ).values(),
+      ];
+
+      user.interest = updatedInterests;
+    }
+
+    // ✅ 2. Update Name
+    if (name && name.trim() !== "") {
+      user.name = name;
+    }
+
+    // ✅ 3. Update Work Info
+    if (occupationWork) {
+      user.work_info = {
+        company: occupationWork.company || "",
+        position: occupationWork.position || "",
+      };
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // ✅ GET ALL USERS
 const getAllUsers = async (req, res, next) => {
   try {
@@ -793,4 +853,5 @@ module.exports = {
   getUnReadNotification,
   checkUserInDB,
   checkPhoneNumber,
+  Updateprofile
 };

@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { bookSlot, getBookings,getUserBookings, getAllInterScheduled,getSpecificInterview, postInterviewStatus } = require('../controllers/booking.controller');
+const { bookSlot, getBookings,getUserBookings, getAllInterScheduled,getSpecificInterview, postInterviewStatus, ComfirmInterviewStatus } = require('../controllers/booking.controller');
 
 // Pass userId in URL params
 router.post('/book-slot/:userId', bookSlot);
+router.patch('/confirm-status/:doc_id', ComfirmInterviewStatus)
 
 // Get all bookings
 router.get('/bookings', getBookings);

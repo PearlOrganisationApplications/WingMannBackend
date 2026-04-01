@@ -17,7 +17,8 @@ const {
     markNotificationsAsRead,
     getUnReadNotification,
     checkUserInDB,
-    checkPhoneNumber
+    checkPhoneNumber,
+    Updateprofile
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
@@ -31,6 +32,7 @@ router.post('/user/login', loginUser );
 
 // CREATE
 router.post('/onboarding', onboarding);
+router.put('/update-profile/:userId', Updateprofile )
 // email
 router.post('/onboarding-email/:userId',sendEmail )
 

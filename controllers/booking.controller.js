@@ -109,6 +109,88 @@ const bookSlot = async (req, res) => {
   }
 };
 
+const ComfirmInterviewStatus = async (req, res) => {
+  try {
+    const { doc_id } = req.params;
+    const { userId, meetLink, dates, time } = req.body;
+    const senderId = userId;
+
+    if (!doc_id) {
+      return res.status(400).json({
+        success: false,
+        message: "doc_id is required",
+      });
+    }
+
+    // ✅ Update Interview Status
+    const interview = await Booking.findByIdAndUpdate(
+      doc_id,
+      { status: "submitted" },
+      { new: true },
+    );
+
+    if (!interview) {
+      return res.status(404).json({
+        success: false,
+        message: "Interview not found",
+      });
+    }
+
+    // 🔥 NOTIFICATION LOGIC STARTS HERE
+
+    // 1. Sender (who will receive notification)
+    const sender = await User.findById(senderId).select("fcmToken name").lean();
+
+    // 2. Receiver (who confirmed schedule)
+
+    // 3. Message
+    const title = "Interview Schedule 🎉";
+   
+
+    const body = `📅 Your interview has been scheduled successfully on ${dates} at ${time}. <a href="https://meet.google.com/f78gmsy8f">Click here to join</a>`;
+
+    // 4. Save notification (DB)
+    await Notification.create({
+      userId: senderId,
+      title,
+      body,
+      type: "interview_schedule",
+      isRead: false,
+      AcceptingPersonImage:
+        "https://media.istockphoto.com/id/691856234/vector/flat-round-check-mark-green-icon-button-tick-symbol-isolated-on-white-background.jpg?s=612x612&w=0&k=20&c=hXL5nXQ2UJlh4yzs2LyZC4GtctQG0fs-mk30GPPbhbQ=",
+      receiverId: null,
+    });
+
+    // 5. Push Notification (FCM)
+    if (sender?.fcmToken) {
+      await sendPushNotification({
+        token: sender.fcmToken,
+        title,
+        body,
+        data: {
+          senderId: String(senderId),
+          // receiverId: String(receiverId),
+          status: "submitted",
+          type: "interview_confirmed",
+        },
+      });
+    }
+
+    // ✅ RESPONSE
+    res.status(200).json({
+      success: true,
+      message: "Interview confirmed and notification sent",
+      data: interview,
+    });
+  } catch (error) {
+    console.error("Error confirming interview:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 // GET all bookings
 const getBookings = async (req, res) => {
   try {
@@ -305,4 +387,5 @@ module.exports = {
   getAllInterScheduled,
   getSpecificInterview,
   postInterviewStatus,
+  ComfirmInterviewStatus,
 };
