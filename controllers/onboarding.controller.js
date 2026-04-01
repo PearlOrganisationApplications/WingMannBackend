@@ -127,18 +127,7 @@ const Updateprofile = async (req, res) => {
 
     // ✅ 1. Update Interests
     if (selected && Array.isArray(selected)) {
-      const existingUserInterests = user.interest || [];
-
-      const updatedInterests = [
-        ...new Map(
-          [...existingUserInterests, ...selected].map((item) => [
-            item.toLowerCase(),
-            item,
-          ])
-        ).values(),
-      ];
-
-      user.interest = updatedInterests;
+      user.interest = selected;
     }
 
     // ✅ 2. Update Name
