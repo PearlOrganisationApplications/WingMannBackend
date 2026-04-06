@@ -59,18 +59,46 @@ const createCallRequest = async (req, res) => {
     console.log('now push notifuiation to firease')
 
     // ✅ 7. Send push notification
-    if (receiver?.fcmToken) {
-      await sendPushNotification({
-        token: receiver.fcmToken,
-        title,
-        body,
-        data: {
-          senderId: String(senderId),
-          receiverId: String(receiverId),
-          type: "call_request_create",
-        },
+    // if (receiver?.fcmToken) {
+    //   await sendPushNotification({
+    //     token: receiver.fcmToken,
+    //     title,
+    //     body,
+    //     data: {
+    //       senderId: String(senderId),
+    //       receiverId: String(receiverId),
+    //       type: "call_request_create",
+    //     },
+    //   });
+    // }
+
+
+    if (sender?.fcmTokens?.length > 0) {
+  const token = sender.fcmTokens[0]; // ✅ first device only
+
+  try {
+    await sendPushNotification({
+      token,
+      title,
+      body,
+      data: {
+        senderId: String(senderId),
+        receiverId: String(receiverId),
+       
+        type: "call_request_create",
+      },
+    });
+  } catch (err) {
+    console.error("FCM Error:", err.message);
+
+    // ❌ Remove invalid token
+    if (err.message.includes("unregistered")) {
+      await User.findByIdAndUpdate(senderId, {
+        $pull: { fcmTokens: token },
       });
     }
+  }
+}
 
     // ✅ 8. Response
     res.status(201).json({
@@ -156,19 +184,45 @@ const changeStatusofCallRequest = async (req, res) => {
 
 
     // 5. Send push notification (if token exists)
-    if (sender?.fcmToken) {
-      await sendPushNotification({
-        token: sender.fcmToken,
-        title,
-        body,
-        data: {
-          senderId: String(senderId),
-          receiverId: String(receiverId),
-          status: String(status),
-          type: "call_request_status",
-        },
+    // if (sender?.fcmToken) {
+    //   await sendPushNotification({
+    //     token: sender.fcmToken,
+    //     title,
+    //     body,
+    //     data: {
+    //       senderId: String(senderId),
+    //       receiverId: String(receiverId),
+    //       status: String(status),
+    //       type: "call_request_status",
+    //     },
+    //   });
+    // }
+    if (sender?.fcmTokens?.length > 0) {
+  const token = sender.fcmTokens[0]; // ✅ first device only
+
+  try {
+    await sendPushNotification({
+      token,
+      title,
+      body,
+      data: {
+        senderId: String(senderId),
+        receiverId: String(receiverId),
+        status: String(status),
+        type: "call_request_status",
+      },
+    });
+  } catch (err) {
+    console.error("FCM Error:", err.message);
+
+    // ❌ Remove invalid token
+    if (err.message.includes("unregistered")) {
+      await User.findByIdAndUpdate(senderId, {
+        $pull: { fcmTokens: token },
       });
     }
+  }
+}
 
     // 6. Response
     res.status(200).json({

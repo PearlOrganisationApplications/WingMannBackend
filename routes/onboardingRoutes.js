@@ -18,7 +18,8 @@ const {
     getUnReadNotification,
     checkUserInDB,
     checkPhoneNumber,
-    Updateprofile
+    Updateprofile,
+    UpdateFCMToken
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
@@ -30,6 +31,8 @@ router.post('/submit/:userId', submitQuiz);
 router.post('/uploadPhotosAndPreferences/:_id', upload.array('photos'), uploadPhotosAndPreferences);
 router.post('/user/login', loginUser );
 
+
+router.put('/update-fcm-token/:userId', UpdateFCMToken)
 // CREATE
 router.post('/onboarding', onboarding);
 router.put('/update-profile/:userId', Updateprofile )

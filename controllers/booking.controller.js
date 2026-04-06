@@ -162,19 +162,32 @@ const ComfirmInterviewStatus = async (req, res) => {
     });
 
     // 5. Push Notification (FCM)
-    if (sender?.fcmToken) {
-      await sendPushNotification({
-        token: sender.fcmToken,
-        title,
-        body,
-        data: {
-          senderId: String(senderId),
-          // receiverId: String(receiverId),
-          status: "submitted",
-          type: "interview_confirmed",
-        },
+   if (sender?.fcmTokens?.length > 0) {
+  const token = sender.fcmTokens[0]; // ✅ first device only
+
+  try {
+    await sendPushNotification({
+      token,
+      title,
+      body,
+      data: {
+        senderId: String(senderId),
+        receiverId: String(receiverId),
+  
+        type: "call_request_status",
+      },
+    });
+  } catch (err) {
+    console.error("FCM Error:", err.message);
+
+    // ❌ Remove invalid token
+    if (err.message.includes("unregistered")) {
+      await User.findByIdAndUpdate(senderId, {
+        $pull: { fcmTokens: token },
       });
     }
+  }
+}
 
     // ✅ RESPONSE
     res.status(200).json({

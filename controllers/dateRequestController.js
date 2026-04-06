@@ -81,18 +81,46 @@ exports.createDateRequest = async (req, res) => {
     });
 
     // ✅ 6. Push Notification
-    if (receiver?.fcmToken) {
-      await sendPushNotification({
-        token: receiver.fcmToken,
-        title,
-        body,
-        data: {
-          senderId: String(senderId),
-          receiverId: String(receiverId),
-          type: "date_request_create",
-        },
+    // if (receiver?.fcmToken) {
+    //   await sendPushNotification({
+    //     token: receiver.fcmToken,
+    //     title,
+    //     body,
+    //     data: {
+    //       senderId: String(senderId),
+    //       receiverId: String(receiverId),
+    //       type: "date_request_create",
+    //     },
+    //   });
+    // }
+
+
+    if (sender?.fcmTokens?.length > 0) {
+  const token = sender.fcmTokens[0]; // ✅ first device only
+
+  try {
+    await sendPushNotification({
+      token,
+      title,
+      body,
+      data: {
+        senderId: String(senderId),
+        receiverId: String(receiverId),
+        status: String(status),
+        type: "date_request_create",
+      },
+    });
+  } catch (err) {
+    console.error("FCM Error:", err.message);
+
+    // ❌ Remove invalid token
+    if (err.message.includes("unregistered")) {
+      await User.findByIdAndUpdate(senderId, {
+        $pull: { fcmTokens: token },
       });
     }
+  }
+}
 
     // ✅ 7. Response
     return res.status(201).json({
@@ -226,19 +254,46 @@ exports.updateDateRequestStatus = async (req, res) => {
     });
 
     // 5. Send push notification
-    if (sender?.fcmToken) {
-      await sendPushNotification({
-        token: sender.fcmToken,
-        title,
-        body,
-        data: {
-          senderId: String(senderId),
-          receiverId: String(receiverId),
-          status: String(status),
-          type: "date_request_status",
-        },
+    // if (sender?.fcmToken) {
+    //   await sendPushNotification({
+    //     token: sender.fcmToken,
+    //     title,
+    //     body,
+    //     data: {
+    //       senderId: String(senderId),
+    //       receiverId: String(receiverId),
+    //       status: String(status),
+    //       type: "date_request_status",
+    //     },
+    //   });
+    // }
+
+    if (sender?.fcmTokens?.length > 0) {
+  const token = sender.fcmTokens[0]; // ✅ first device only
+
+  try {
+    await sendPushNotification({
+      token,
+      title,
+      body,
+      data: {
+        senderId: String(senderId),
+        receiverId: String(receiverId),
+        status: String(status),
+        type: "date_request_status",
+      },
+    });
+  } catch (err) {
+    console.error("FCM Error:", err.message);
+
+    // ❌ Remove invalid token
+    if (err.message.includes("unregistered")) {
+      await User.findByIdAndUpdate(senderId, {
+        $pull: { fcmTokens: token },
       });
     }
+  }
+}
 
     // 🔥 RESPONSE
     return res.status(200).json({

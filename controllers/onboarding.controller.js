@@ -8,12 +8,20 @@ const matchProfileSchema = require("../models/admin.photoupload");
 const callRequest = require("../models/callRequest");
 const DateRequest = require("../models/dateRequest");
 const Notification = require("../models/notification");
+const axios = require("axios");
 const mongoose = require("mongoose");
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
   try {
-    console.log("req. bofy : ", req.body);
-    const user = await User.create(req.body);
+    console.log("req.body:", req.body);
+
+    const { fcmToken, ...rest } = req.body;
+
+    const user = await User.create({
+      ...rest,
+      // ✅ convert to array
+      fcmTokens: fcmToken ? [fcmToken] : [],
+    });
 
     res.status(201).json({
       success: true,
@@ -110,7 +118,6 @@ const sendEmail = async (req, res) => {
   }
 };
 
-
 const Updateprofile = async (req, res) => {
   const { userId } = req.params;
   const { selected, name, occupationWork } = req.body;
@@ -150,7 +157,6 @@ const Updateprofile = async (req, res) => {
       message: "Profile updated successfully",
       data: user,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -262,7 +268,8 @@ const getUserById = async (req, res, next) => {
 
     const date_requested = date_request_received.filter(
       (item) =>
-        item.status === "submitted" && item.senderId?._id.toString() !== req.params.id,
+        item.status === "submitted" &&
+        item.senderId?._id.toString() !== req.params.id,
     );
     const date_request_sent = await DateRequest.find({
       senderId: req.params.id,
@@ -519,58 +526,174 @@ const getUserAnalytics = async (req, res) => {
   }
 };
 
+// const submitQuiz = async (req, res) => {
+//   try {
+//     const { quizzes } = req.body; // Hum expect kar rahe hain { "quizzes": [...] }
+//     const { userId } = req.params; // Middleware se mil raha hai
+//     console.log("quizzes ", quizzes, "userId", userId);
+//     // 1. Check karo ki array bheja bhi hai ya nahi
+//     if (!quizzes || !Array.isArray(quizzes) || quizzes.length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Please provide an array of quizzes in the 'quizzes' key.",
+//       });
+//     }
+
+//     // 2. Data Prepare: Har quiz category ke object mein userId ghusana
+//     const quizzesToSave = quizzes.map((quiz, index) => {
+//       // Validation: Har quiz ke andar answers hona zaruri hai
+//       if (
+//         !quiz.answers ||
+//         !Array.isArray(quiz.answers) ||
+//         quiz.answers.length === 0
+//       ) {
+//         throw new Error(
+//           `Quiz at index ${index} (${quiz.quizName || "Unknown"}) is missing answers.`,
+//         );
+//       }
+
+//       return {
+//         userId: userId,
+//         quizName: quiz.quizName,
+//         answers: quiz.answers, // Ye answers khud ek array hai [{question, selectedOption}]
+//       };
+//     });
+
+//     // 3. Bulk Insert: Saare 5 cards ka data ek saath database mein save hoga
+//     const savedQuizzes = await Quiz.insertMany(quizzesToSave);
+
+//     res.status(201).json({
+//       success: true,
+//       message: `${savedQuizzes.length} Quiz categories submitted successfully!`,
+//       data: savedQuizzes,
+//     });
+//   } catch (error) {
+//     console.error("❌ Submit Error:", error.message);
+
+//     // Validation ya Enum error handling
+//     if (error.name === "ValidationError") {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Validation Error: Check quiz names or structure.",
+//         error: error.message,
+//       });
+//     }
+
+//     res.status(400).json({
+//       success: false,
+//       message: error.message || "Internal Server Error",
+//     });
+//   }
+// };
+
 const submitQuiz = async (req, res) => {
   try {
-    const { quizzes } = req.body; // Hum expect kar rahe hain { "quizzes": [...] }
-    const { userId } = req.params; // Middleware se mil raha hai
-    console.log("quizzes ", quizzes, "userId", userId);
-    // 1. Check karo ki array bheja bhi hai ya nahi
+    const { quizzes } = req.body;
+    const { userId } = req.params;
+
     if (!quizzes || !Array.isArray(quizzes) || quizzes.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Please provide an array of quizzes in the 'quizzes' key.",
+        message: "Please provide quizzes array",
       });
     }
 
-    // 2. Data Prepare: Har quiz category ke object mein userId ghusana
+    // ✅ Validate & prepare quizzes
     const quizzesToSave = quizzes.map((quiz, index) => {
-      // Validation: Har quiz ke andar answers hona zaruri hai
-      if (
-        !quiz.answers ||
-        !Array.isArray(quiz.answers) ||
-        quiz.answers.length === 0
-      ) {
-        throw new Error(
-          `Quiz at index ${index} (${quiz.quizName || "Unknown"}) is missing answers.`,
-        );
+      if (!quiz.answers || !Array.isArray(quiz.answers)) {
+        throw new Error(`Quiz ${quiz.quizName} missing answers`);
       }
 
       return {
-        userId: userId,
+        userId,
         quizName: quiz.quizName,
-        answers: quiz.answers, // Ye answers khud ek array hai [{question, selectedOption}]
+        answers: quiz.answers,
       };
     });
 
-    // 3. Bulk Insert: Saare 5 cards ka data ek saath database mein save hoga
+    // ✅ Get user
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ✅ Normalize user data
+    const name = user.name || "Unknown";
+    const phone = user.phonenumber?.replace("+91", "") || "";
+    const gender = user.gender?.toLowerCase() === "male" ? "Male" : "Female";
+
+    // ✅ Save quizzes
     const savedQuizzes = await Quiz.insertMany(quizzesToSave);
+
+    // ============================================
+    // 🔥 STEP 2: Build SAFE answers payload
+    // ============================================
+
+    const answersPayload = {};
+
+    // ✅ Force all answers = "1" (from your requirement)
+    quizzes.forEach((quiz) => {
+      quiz.answers.forEach((ans) => {
+        answersPayload[ans.question] = "1";
+      });
+    });
+
+    // ✅ Ensure ALL 25 questions exist
+    for (let i = 1; i <= 25; i++) {
+      if (!answersPayload[i]) {
+        answersPayload[i] = "1";
+      }
+    }
+
+    const externalPayload = {
+      name,
+      phone,
+      gender,
+      answers: answersPayload,
+    };
+
+    console.log("📤 Sending to external API:", externalPayload);
+
+    // ============================================
+    // 🔥 STEP 3: Call External API
+    // ============================================
+
+    let externalResponse = null;
+
+    try {
+      externalResponse = await axios.post(
+        "https://wingcompatibilitytest.onrender.com/submit",
+        externalPayload,
+      );
+      if (externalResponse?.data?.userId) {
+        user.userQuizId = externalResponse.data.userId; // ✅ assign
+        await user.save(); // ✅ save to DB
+      }
+      console.log("✅ External API Response:", externalResponse.data);
+    } catch (apiError) {
+      console.error(
+        "❌ External API Error:",
+        apiError.response?.data || apiError.message,
+      );
+      // ⚠️ don't break main API
+    }
+
+    // ============================================
+    // ✅ Final Response
+    // ============================================
 
     res.status(201).json({
       success: true,
       message: `${savedQuizzes.length} Quiz categories submitted successfully!`,
       data: savedQuizzes,
+      externalApi: externalResponse?.data || "Failed or skipped",
     });
   } catch (error) {
     console.error("❌ Submit Error:", error.message);
-
-    // Validation ya Enum error handling
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        success: false,
-        message: "Validation Error: Check quiz names or structure.",
-        error: error.message,
-      });
-    }
 
     res.status(400).json({
       success: false,
@@ -825,6 +948,42 @@ const checkPhoneNumber = async (req, res) => {
   }
 };
 
+const UpdateFCMToken = async (req, res) => {
+  const { userId } = req.params;
+  const { fcmToken } = req.body;
+
+  try {
+    if (!fcmToken) {
+      return res.status(400).json({
+        success: false,
+        message: "FCM token is required",
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        // ✅ Add token without duplicates
+        $addToSet: { fcmTokens: fcmToken },
+      },
+      { new: true },
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "FCM token updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("FCM Update Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   onboarding,
   getAllUsers,
@@ -842,5 +1001,6 @@ module.exports = {
   getUnReadNotification,
   checkUserInDB,
   checkPhoneNumber,
-  Updateprofile
+  Updateprofile,
+  UpdateFCMToken,
 };

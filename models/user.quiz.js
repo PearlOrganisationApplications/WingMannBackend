@@ -1,5 +1,16 @@
 const mongoose = require('mongoose');
 
+const answerSchema = new mongoose.Schema({
+    question: { 
+        type: Number, 
+        required: true 
+    },
+    selectedOption: { 
+        type: mongoose.Schema.Types.Mixed, // supports string/number
+        required: true 
+    }
+}, { _id: false });
+
 const quizSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -17,16 +28,20 @@ const quizSchema = new mongoose.Schema({
             'Growth, Readiness & Emotional Maturity'
         ]
     },
-    answers: [
-        {
-            question: { type: String, required: true },
-            selectedOption: { type: String, required: true }
+    answers: {
+        type: [answerSchema],
+        validate: {
+            validator: function (answers) {
+                const questions = answers.map(a => a.question);
+                return new Set(questions).size === questions.length;
+            },
+            message: "Duplicate questions are not allowed"
         }
-    ],
+    },
     attemptedAt: {
         type: Date,
         default: Date.now
     }
 }, { timestamps: true });
- 
+
 module.exports = mongoose.model('Quiz', quizSchema);
