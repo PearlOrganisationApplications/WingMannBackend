@@ -26,6 +26,7 @@ const onboarding = async (req, res, next) => {
     res.status(201).json({
       success: true,
       _id: user._id,
+      user,
     });
   } catch (err) {
     next(err);
@@ -707,6 +708,7 @@ const submitQuiz = async (req, res) => {
 const getRecommendedProfiles = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log("API hit : ", userId);
 
     const currentUser = await User.findById(userId);
 
@@ -715,128 +717,142 @@ const getRecommendedProfiles = async (req, res) => {
       return;
     }
 
-    const pref = currentUser.preferences;
+    const quizId = currentUser?.userQuizId;
+    console.log("quiz id :", quizId);
+
+    const externalResponse = await axios.get(
+      // "https://wingcompatibilitytest.onrender.com/submit",
+
+      `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`,
+    );
+    console.log(externalResponse.data);
+    res.status(200).json({
+      message: "profile recommended",
+      profile: externalResponse.data,
+    });
+
+    // const pref = currentUser.preferences;
 
     // ✅ If preferences are empty return latest 10 users
-    if (
-      !pref ||
-      Object.keys(pref).length === 0 ||
-      !pref.religion ||
-      !pref.ethnicity
-    ) {
-      const latestUsers = await User.find({
-        _id: { $ne: currentUser._id },
-        role: "user",
-      })
-        .sort({ createdAt: -1 })
-        .limit(10);
+    // if (
+    //   !pref ||
+    //   Object.keys(pref).length === 0 ||
+    //   !pref.religion ||
+    //   !pref.ethnicity
+    // ) {
+    //   const latestUsers = await User.find({
+    //     _id: { $ne: currentUser._id },
+    //     role: "user",
+    //   })
+    //     .sort({ createdAt: -1 })
+    //     .limit(10);
 
-      res.status(200).json({
-        success: true,
-        count: latestUsers.length,
-        users: latestUsers,
-      });
-      return;
-    }
+    //   res.status(200).json({
+    //     success: true,
+    //     count: latestUsers.length,
+    //     users: latestUsers,
+    //   });
+    //   return;
+    // }
 
     // ✅ Normal recommendation logic
-    const users = await User.aggregate([
-      {
-        $match: {
-          _id: { $ne: currentUser._id },
-          role: "user",
-        },
-      },
+    // const users = await User.aggregate([
+    //   {
+    //     $match: {
+    //       _id: { $ne: currentUser._id },
+    //       role: "user",
+    //     },
+    //   },
 
-      {
-        $addFields: {
-          matchCount: {
-            $add: [
-              {
-                $cond: [
-                  { $eq: ["$preferences.religion", pref.religion] },
-                  1,
-                  0,
-                ],
-              },
-              {
-                $cond: [
-                  { $eq: ["$preferences.ethnicity", pref.ethnicity] },
-                  1,
-                  0,
-                ],
-              },
-              {
-                $cond: [
-                  {
-                    $gt: [
-                      {
-                        $size: {
-                          $setIntersection: [
-                            { $ifNull: ["$preferences.spoken_language", []] },
-                            pref.spoken_language || [],
-                          ],
-                        },
-                      },
-                      0,
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-              {
-                $cond: [
-                  {
-                    $and: [
-                      { $gte: ["$preferences.age.max", pref.age?.min] },
-                      { $lte: ["$preferences.age.min", pref.age?.max] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-              {
-                $cond: [
-                  {
-                    $and: [
-                      { $gte: ["$preferences.height.max", pref.height?.min] },
-                      { $lte: ["$preferences.height.min", pref.height?.max] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            ],
-          },
-        },
-      },
+    //   {
+    //     $addFields: {
+    //       matchCount: {
+    //         $add: [
+    //           {
+    //             $cond: [
+    //               { $eq: ["$preferences.religion", pref.religion] },
+    //               1,
+    //               0,
+    //             ],
+    //           },
+    //           {
+    //             $cond: [
+    //               { $eq: ["$preferences.ethnicity", pref.ethnicity] },
+    //               1,
+    //               0,
+    //             ],
+    //           },
+    //           {
+    //             $cond: [
+    //               {
+    //                 $gt: [
+    //                   {
+    //                     $size: {
+    //                       $setIntersection: [
+    //                         { $ifNull: ["$preferences.spoken_language", []] },
+    //                         pref.spoken_language || [],
+    //                       ],
+    //                     },
+    //                   },
+    //                   0,
+    //                 ],
+    //               },
+    //               1,
+    //               0,
+    //             ],
+    //           },
+    //           {
+    //             $cond: [
+    //               {
+    //                 $and: [
+    //                   { $gte: ["$preferences.age.max", pref.age?.min] },
+    //                   { $lte: ["$preferences.age.min", pref.age?.max] },
+    //                 ],
+    //               },
+    //               1,
+    //               0,
+    //             ],
+    //           },
+    //           {
+    //             $cond: [
+    //               {
+    //                 $and: [
+    //                   { $gte: ["$preferences.height.max", pref.height?.min] },
+    //                   { $lte: ["$preferences.height.min", pref.height?.max] },
+    //                 ],
+    //               },
+    //               1,
+    //               0,
+    //             ],
+    //           },
+    //         ],
+    //       },
+    //     },
+    //   },
 
-      // ⭐ calculate percentage
-      {
-        $addFields: {
-          compatibilityPercentage: {
-            $multiply: [{ $divide: ["$matchCount", 5] }, 100],
-          },
-        },
-      },
+    //   // ⭐ calculate percentage
+    //   {
+    //     $addFields: {
+    //       compatibilityPercentage: {
+    //         $multiply: [{ $divide: ["$matchCount", 5] }, 100],
+    //       },
+    //     },
+    //   },
 
-      {
-        $sort: { matchCount: -1 },
-      },
+    //   {
+    //     $sort: { matchCount: -1 },
+    //   },
 
-      {
-        $limit: 10,
-      },
-    ]);
+    //   {
+    //     $limit: 10,
+    //   },
+    // ]);
 
-    res.status(200).json({
-      success: true,
-      count: users.length,
-      users,
-    });
+    // res.status(200).json({
+    //   success: true,
+    //   count: users.length,
+    //   users,
+    // });
   } catch (error) {
     res.status(500).json({
       success: false,
