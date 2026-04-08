@@ -720,16 +720,52 @@ const getRecommendedProfiles = async (req, res) => {
     const quizId = currentUser?.userQuizId;
     console.log("quiz id :", quizId);
 
-    const externalResponse = await axios.get(
-      // "https://wingcompatibilitytest.onrender.com/submit",
+    if (quizId) {
+      const externalResponse = await axios.get(
+        // "https://wingcompatibilitytest.onrender.com/submit",
 
-      `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`,
-    );
-    console.log(externalResponse.data);
-    res.status(200).json({
-      message: "profile recommended",
-      profile: externalResponse.data,
-    });
+        `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`,
+      );
+
+      const filteredProfiles = externalResponse.data.map((item) => ({
+        ...item.user2,
+        score: item.score,
+      }));
+
+      // 1. Extract all quiz user IDs
+      const quizUserIds = filteredProfiles.map((profile) => profile.id);
+
+      // 2. Fetch users from DB
+      const users = await User.find({
+        userQuizId: { $in: quizUserIds },
+      }).lean();
+
+      // 3. Map users by userQuizId for quick lookup
+      const userMap = {};
+      users.forEach((user) => {
+        userMap[user.userQuizId] = user;
+      });
+
+      // 4. Merge user info with filteredProfiles
+      const enrichedProfiles = filteredProfiles.map((profile) => ({
+        ...profile,
+        userInfo: userMap[profile.id] || null,
+      }));
+
+      console.log(enrichedProfiles);
+
+      res.status(200).json({
+        message: "profile recommended",
+        profile: enrichedProfiles,
+        quizComplete: true,
+      });
+    } else {
+      res.status(200).json({
+        success: true,
+        quizIncomplete: "Submit the Quiz for profile Recommendation",
+        quizComplete: false,
+      });
+    }
 
     // const pref = currentUser.preferences;
 
