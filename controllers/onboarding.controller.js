@@ -668,6 +668,7 @@ const submitQuiz = async (req, res) => {
     try {
       externalResponse = await axios.post(
         // "https://wingcompatibilitytest.onrender.com/submit",
+        // http://localhost:3000
 
         "https://wingcompatibilitytest.onrender.com/submit",
         externalPayload,
@@ -723,6 +724,7 @@ const getRecommendedProfiles = async (req, res) => {
     if (quizId) {
       const externalResponse = await axios.get(
         // "https://wingcompatibilitytest.onrender.com/submit",
+        // http://localhost:3000
 
         `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`,
       );

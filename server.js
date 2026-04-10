@@ -23,7 +23,8 @@ app.use(
     origin: [
       "http://localhost:5174",
       "https://wingman-santosh.onrender.com",
-      'https://wingmann.online'
+      'https://wingmann.online',
+      "http://localhost:5173"
     ],
     credentials: true,
   })
