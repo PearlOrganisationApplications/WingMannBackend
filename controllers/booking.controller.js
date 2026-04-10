@@ -3,11 +3,13 @@ const Booking = require("../models/booking.model");
 const Notification = require("../models/notification");
 const User = require("../models/user.model"); // optional if you want to fetch user info
 const sendPushNotification = require("../utils/sendPushNotification");
+const {getAcceptedTemplate,getRejectedTemplate,sendEmailonInterview } = require('../utils/emailTemplates')
 // Helper: generate pseudo Google Meet link
 const generateMeetLink = () => {
   const randomCode = Math.random().toString(36).substring(2, 11); // 9-char random
   return `https://meet.google.com/${randomCode}`;
 };
+
 
 // POST: book a slot with userId in params
 const bookSlot = async (req, res) => {
@@ -231,7 +233,7 @@ const getUserBookings = async (req, res) => {
     const bookings = await Booking.find({ interviewer: userId }).populate(
       "interviewer",
       "user availability",
-    );
+    ).sort({ createdAt: -1 });
 
     if (bookings.length === 0) {
       return res
@@ -376,6 +378,27 @@ const postInterviewStatus = async (req, res) => {
         },
       });
     }
+
+   if (user?.email) {
+  let emailData;
+
+  if (status === "accepted") {
+    emailData = getAcceptedTemplate(
+      user.name,
+   
+    );
+  } else if (status === "rejected") {
+    emailData = getRejectedTemplate(
+      user.name,
+      rejectionReason
+    );
+  }
+
+  if (emailData) {
+    await sendEmailonInterview(user.email, emailData.subject, emailData.html);
+    console.log("📧 Email sent");
+  }
+}
 
     // ✅ Response
     res.status(200).json({
