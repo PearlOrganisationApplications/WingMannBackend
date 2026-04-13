@@ -320,6 +320,20 @@ const postInterviewStatus = async (req, res) => {
       });
     }
 
+    // ✅ Map interview status → profile verification status
+    let profileStatus = "pending";
+
+    if (status === "accepted") {
+      profileStatus = "verified";
+    } else if (status === "rejected") {
+      profileStatus = "rejected";
+    }
+
+    // ✅ Update User Model
+    await User.findByIdAndUpdate(updatedBooking.userId, {
+      isprofileVerified: profileStatus,
+    });
+
     // ✅ 🔥 NEW: Fetch User + Interviewer
     const user = await User.findById(updatedBooking.userId)
       .select("fcmToken name profilephoto email")

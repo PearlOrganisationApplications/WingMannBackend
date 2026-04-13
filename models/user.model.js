@@ -84,6 +84,13 @@ const userSchema = new mongoose.Schema(
     },
     userQuizId:Number
   },
+  {
+    isprofileVerified:{
+      type:String,
+      enum :['pending','submitted', 'verified', 'rejected'],
+      default:'pending'
+    }
+  },
   { timestamps: true },
 );
 

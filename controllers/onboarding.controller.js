@@ -309,7 +309,7 @@ const getUserById = async (req, res, next) => {
       callRequest_notifications,
       dateRequest_notifications,
       notifications,
-      profileStatus:profile
+   
     });
   } catch (err) {
     next(err);
