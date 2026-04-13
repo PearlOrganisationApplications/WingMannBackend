@@ -137,5 +137,5 @@ const sendEmailonInterview = async (to, subject, html) => {
 };
 
 module.exports = {
-  welcomeTemplate,getAcceptedTemplate,getRejectedTemplate
+  welcomeTemplate,getAcceptedTemplate,getRejectedTemplate,sendEmailonInterview
 };

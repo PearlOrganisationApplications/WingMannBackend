@@ -9,6 +9,7 @@ const callRequest = require("../models/callRequest");
 const DateRequest = require("../models/dateRequest");
 const Notification = require("../models/notification");
 const axios = require("axios");
+const Booking = require("../models/booking.model");
 const mongoose = require("mongoose");
 // ✅ CREATE (Onboarding)
 const onboarding = async (req, res, next) => {
@@ -294,6 +295,8 @@ const getUserById = async (req, res, next) => {
       (n) => n.type === "date request",
     );
 
+
+    const profile = await Booking.find({userId:req.params.id}).select('status')
     res.json({
       success: true,
       data: user,
@@ -306,6 +309,7 @@ const getUserById = async (req, res, next) => {
       callRequest_notifications,
       dateRequest_notifications,
       notifications,
+      profileStatus:profile
     });
   } catch (err) {
     next(err);

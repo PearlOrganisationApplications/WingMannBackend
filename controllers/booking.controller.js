@@ -3,13 +3,16 @@ const Booking = require("../models/booking.model");
 const Notification = require("../models/notification");
 const User = require("../models/user.model"); // optional if you want to fetch user info
 const sendPushNotification = require("../utils/sendPushNotification");
-const {getAcceptedTemplate,getRejectedTemplate,sendEmailonInterview } = require('../utils/emailTemplates')
+const {
+  getAcceptedTemplate,
+  getRejectedTemplate,
+  sendEmailonInterview,
+} = require("../utils/emailTemplates");
 // Helper: generate pseudo Google Meet link
 const generateMeetLink = () => {
   const randomCode = Math.random().toString(36).substring(2, 11); // 9-char random
   return `https://meet.google.com/${randomCode}`;
 };
-
 
 // POST: book a slot with userId in params
 const bookSlot = async (req, res) => {
@@ -147,7 +150,6 @@ const ComfirmInterviewStatus = async (req, res) => {
 
     // 3. Message
     const title = "Interview Schedule 🎉";
-   
 
     const body = `📅 Your interview has been scheduled successfully on ${dates} at ${time}. <a href="https://meet.google.com/f78gmsy8f">Click here to join</a>`;
 
@@ -164,32 +166,32 @@ const ComfirmInterviewStatus = async (req, res) => {
     });
 
     // 5. Push Notification (FCM)
-   if (sender?.fcmTokens?.length > 0) {
-  const token = sender.fcmTokens[0]; // ✅ first device only
+    if (sender?.fcmTokens?.length > 0) {
+      const token = sender.fcmTokens[0]; // ✅ first device only
 
-  try {
-    await sendPushNotification({
-      token,
-      title,
-      body,
-      data: {
-        senderId: String(senderId),
-        receiverId: String(receiverId),
-  
-        type: "call_request_status",
-      },
-    });
-  } catch (err) {
-    console.error("FCM Error:", err.message);
+      try {
+        await sendPushNotification({
+          token,
+          title,
+          body,
+          data: {
+            senderId: String(senderId),
+            receiverId: String(receiverId),
 
-    // ❌ Remove invalid token
-    if (err.message.includes("unregistered")) {
-      await User.findByIdAndUpdate(senderId, {
-        $pull: { fcmTokens: token },
-      });
+            type: "call_request_status",
+          },
+        });
+      } catch (err) {
+        console.error("FCM Error:", err.message);
+
+        // ❌ Remove invalid token
+        if (err.message.includes("unregistered")) {
+          await User.findByIdAndUpdate(senderId, {
+            $pull: { fcmTokens: token },
+          });
+        }
+      }
     }
-  }
-}
 
     // ✅ RESPONSE
     res.status(200).json({
@@ -230,10 +232,9 @@ const getUserBookings = async (req, res) => {
     }
 
     // Find all bookings for this user
-    const bookings = await Booking.find({ interviewer: userId }).populate(
-      "interviewer",
-      "user availability",
-    ).sort({ createdAt: -1 });
+    const bookings = await Booking.find({ interviewer: userId })
+      .populate("interviewer", "user availability")
+      .sort({ createdAt: -1 });
 
     if (bookings.length === 0) {
       return res
@@ -321,7 +322,7 @@ const postInterviewStatus = async (req, res) => {
 
     // ✅ 🔥 NEW: Fetch User + Interviewer
     const user = await User.findById(updatedBooking.userId)
-      .select("fcmToken name profilephoto")
+      .select("fcmToken name profilephoto email")
       .lean();
 
     const interviewer = await User.findById(updatedBooking.interviewer)
@@ -329,27 +330,20 @@ const postInterviewStatus = async (req, res) => {
       .lean();
 
     // ✅ 🔥 Notification Content
-    let title = "Interview Update";
+    let title = "Profile Update";
     let body = "";
 
     if (status === "accepted") {
-      // body = `✅ Your interview has been accepted by ${interviewer?.name}. Join here: ${updatedBooking?.meetLink}`;
       body = `
   <p>
-    ✅ Your interview has been accepted by ${interviewer?.name}.
-    <a 
-      href="${updatedBooking?.meetLink}" 
-      target="_blank" 
-      style="color: blue; text-decoration: underline;"
-    >
-      Join here
-    </a>
+    ✅ Your profile has been accepted by ${interviewer?.name}.
+   
   </p>
 `;
     } else if (status === "rejected") {
-      body = `❌ Your interview was rejected by ${interviewer?.name}`;
+      body = `❌ Your profile has been rejected by ${interviewer?.name}`;
     } else {
-      body = `📢 Interview status updated to ${status}`;
+      body = `📢 Profile status : ${status}`;
     }
 
     // ✅ 🔥 Save Notification
@@ -379,33 +373,32 @@ const postInterviewStatus = async (req, res) => {
       });
     }
 
-   if (user?.email) {
-  let emailData;
+    if (user?.email) {
+      let emailData;
 
-  if (status === "accepted") {
-    emailData = getAcceptedTemplate(
-      user.name,
-   
-    );
-  } else if (status === "rejected") {
-    emailData = getRejectedTemplate(
-      user.name,
-      rejectionReason
-    );
-  }
+      if (status === "accepted") {
+        emailData = getAcceptedTemplate(user.name, updatedBooking.meetLink);
+      } else if (status === "rejected") {
+        emailData = getRejectedTemplate(user.name, rejectionReason);
+      }
 
-  if (emailData) {
-    await sendEmailonInterview(user.email, emailData.subject, emailData.html);
-    console.log("📧 Email sent");
-  }
-}
+      if (emailData) {
+        console.log("Sending email...");
+        await sendEmailonInterview(
+          user.email,
+          emailData.subject,
+          emailData.html,
+        );
+        console.log("📧 Email sent");
+      }
 
-    // ✅ Response
-    res.status(200).json({
-      success: true,
-      message: "Interview status updated successfully",
-      booking: updatedBooking,
-    });
+      // ✅ Response
+      res.status(200).json({
+        success: true,
+        message: "Interview status updated successfully",
+        booking: updatedBooking,
+      });
+    }
   } catch (error) {
     console.error("Error:", error);
 
