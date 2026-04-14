@@ -144,7 +144,16 @@ const ComfirmInterviewStatus = async (req, res) => {
     // 🔥 NOTIFICATION LOGIC STARTS HERE
 
     // 1. Sender (who will receive notification)
-    const sender = await User.findById(senderId).select("fcmToken name").lean();
+    // const sender = await User.findById(senderId).select("fcmToken name");
+    // sender?.isprofileVerified = "submitted"
+
+    // await sender.save();
+    const sender = await User.findById(senderId).select(
+      "fcmToken name isprofileVerified",
+    );
+
+    sender.isprofileVerified = "submitted";
+    await sender.save();
 
     // 2. Receiver (who confirmed schedule)
 
@@ -291,6 +300,7 @@ const postInterviewStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { status, rejectionReason } = req.body;
+    console.log("status : ", status);
 
     if (status === "rejected" && !rejectionReason) {
       return res.status(400).json({
@@ -330,9 +340,14 @@ const postInterviewStatus = async (req, res) => {
     }
 
     // ✅ Update User Model
-    await User.findByIdAndUpdate(updatedBooking.userId, {
-      isprofileVerified: profileStatus,
-    });
+    const updatedUser = await User.findByIdAndUpdate(
+      updatedBooking.userId,
+      {
+        isprofileVerified: profileStatus,
+      },
+      { new: true },
+    );
+    console.log(" updatedUser : ", updatedUser);
 
     // ✅ 🔥 NEW: Fetch User + Interviewer
     const user = await User.findById(updatedBooking.userId)
