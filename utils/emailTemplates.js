@@ -127,6 +127,55 @@ const getRejectedTemplate = (name, reason) => {
   };
 };
 
+ const emailInterviewData  =(name,date,time,meetlink)=>{
+  return{
+    subject: "Reminder: Your WingMate interview is scheduled",
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <p>Hey ${name},</p>
+
+        <p>
+          Just a gentle reminder that your <b>WingMate interview</b> has been scheduled.
+        </p>
+
+        <p>🗓 <b>Date:</b> ${date}</p>
+        <p>⏰ <b>Time:</b> ${time}</p>
+        <p>📍 <b>Mode:</b> Video</p>
+
+        <p>
+          This conversation is meant to be relaxed and meaningful, a space for us
+          to understand you better and ensure WingMann is the right fit for you.
+        </p>
+
+        <p>
+          Please make sure you’re available a few minutes prior to the scheduled time.
+        </p>
+
+        <p>
+          <a href="${meetlink}" target="_blank" 
+            style="display:inline-block; padding:10px 15px; background:#6c5ce7; color:#fff; text-decoration:none; border-radius:5px;">
+            Join Interview
+          </a>
+        </p>
+
+        <p>
+          If you need to reschedule or have any questions, feel free to reply to this email.
+        </p>
+
+        <br/>
+
+        <p>Looking forward to connecting with you.</p>
+
+        <p>
+          Warmly,<br/>
+          <b>Team WingMann</b><br/>
+          <i>Date with Intent</i>
+        </p>
+      </div>
+    `,
+    }
+  };
+
 const sendEmailonInterview = async (to, subject, html) => {
   await transporter.sendMail({
     from: `"WingMann" <${process.env.EMAIL_USER}>`,
@@ -137,5 +186,5 @@ const sendEmailonInterview = async (to, subject, html) => {
 };
 
 module.exports = {
-  welcomeTemplate,getAcceptedTemplate,getRejectedTemplate,sendEmailonInterview
+  welcomeTemplate,getAcceptedTemplate,getRejectedTemplate,sendEmailonInterview,emailInterviewData
 };

@@ -7,6 +7,7 @@ const {
   getAcceptedTemplate,
   getRejectedTemplate,
   sendEmailonInterview,
+   emailInterviewData
 } = require("../utils/emailTemplates");
 // Helper: generate pseudo Google Meet link
 const generateMeetLink = () => {
@@ -118,7 +119,6 @@ const ComfirmInterviewStatus = async (req, res) => {
   try {
     const { doc_id } = req.params;
     const { userId, meetLink, dates, time } = req.body;
-    const senderId = userId;
 
     if (!doc_id) {
       return res.status(400).json({
@@ -130,8 +130,8 @@ const ComfirmInterviewStatus = async (req, res) => {
     // ✅ Update Interview Status
     const interview = await Booking.findByIdAndUpdate(
       doc_id,
-      { status: "submitted" },
-      { new: true },
+      { status: "submitted", meetLink },
+      { new: true }
     );
 
     if (!interview) {
@@ -141,73 +141,49 @@ const ComfirmInterviewStatus = async (req, res) => {
       });
     }
 
-    // 🔥 NOTIFICATION LOGIC STARTS HERE
-
-    // 1. Sender (who will receive notification)
-    // const sender = await User.findById(senderId).select("fcmToken name");
-    // sender?.isprofileVerified = "submitted"
-
-    // await sender.save();
-    const sender = await User.findById(senderId).select(
-      "fcmToken name isprofileVerified",
+    // ✅ Get User (for notification + email)
+    const user = await User.findById(userId).select(
+      "fcmTokens name email isprofileVerified"
     );
 
-    sender.isprofileVerified = "submitted";
-    await sender.save();
-
-    // 2. Receiver (who confirmed schedule)
-
-    // 3. Message
+    // ✅ Update profile status
+    user.isprofileVerified = "submitted";
+    await user.save();
+    
+    if (user?.email) {
+      let data = emailInterviewData(user.name,dates,time,meetLink)
+      console.log("📧 Sending interview email...");
+      await sendEmailonInterview(
+        user.email,
+        data.subject,
+        data.html
+      );
+      console.log("✅ Email sent");
+    }
+   
     const title = "Interview Schedule 🎉";
+    const body = `📅 Your interview has been scheduled on ${dates} at ${time}. <a href="${meetLink}">Click here to join</a>`;
 
-    const body = `📅 Your interview has been scheduled successfully on ${dates} at ${time}. <a href="https://meet.google.com/f78gmsy8f">Click here to join</a>`;
-
-    // 4. Save notification (DB)
     await Notification.create({
-      userId: senderId,
+      userId,
       title,
       body,
       type: "interview_schedule",
       isRead: false,
       AcceptingPersonImage:
-        "https://media.istockphoto.com/id/691856234/vector/flat-round-check-mark-green-icon-button-tick-symbol-isolated-on-white-background.jpg?s=612x612&w=0&k=20&c=hXL5nXQ2UJlh4yzs2LyZC4GtctQG0fs-mk30GPPbhbQ=",
+        "https://media.istockphoto.com/id/691856234/vector/flat-round-check-mark-green-icon-button-tick-symbol-isolated-on-white-background.jpg",
       receiverId: null,
     });
 
-    // 5. Push Notification (FCM)
-    if (sender?.fcmTokens?.length > 0) {
-      const token = sender.fcmTokens[0]; // ✅ first device only
-
-      try {
-        await sendPushNotification({
-          token,
-          title,
-          body,
-          data: {
-            senderId: String(senderId),
-            receiverId: String(receiverId),
-
-            type: "call_request_status",
-          },
-        });
-      } catch (err) {
-        console.error("FCM Error:", err.message);
-
-        // ❌ Remove invalid token
-        if (err.message.includes("unregistered")) {
-          await User.findByIdAndUpdate(senderId, {
-            $pull: { fcmTokens: token },
-          });
-        }
-      }
-    }
+   
 
     // ✅ RESPONSE
     res.status(200).json({
       success: true,
-      message: "Interview confirmed and notification sent",
+      message: "Interview confirmed + email + notification sent",
       data: interview,
     });
+
   } catch (error) {
     console.error("Error confirming interview:", error);
 
