@@ -37,7 +37,7 @@ const onboarding = async (req, res, next) => {
 const loginUser = async (req, res, next) => {
   try {
     const { email } = req.body;
-    console.log("enmail : ", email);
+ 
 
     // 1️⃣ Check if email & password provided
     if (!email) {
@@ -80,7 +80,7 @@ const loginUser = async (req, res, next) => {
 const sendEmail = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("user Id :", userId);
+  
 
     const user = await User.findById({ _id: userId });
 
@@ -253,8 +253,10 @@ const getUserById = async (req, res, next) => {
     let exists = !!quizExists;
 
     const call_request = await callRequest
-      .find({ senderId: req.params.id })
-      .select("-senderId, -updatedAt");
+      .find({
+        $or: [{ senderId: req.params.id }, { receiverId: req.params.id }],
+      })
+      .select(" -updatedAt");
 
     // const date_request = await  DateRequest.find({receiverId:req.params.id}).populate('senderId').select("-senderId, -updatedAt")
 
@@ -295,8 +297,9 @@ const getUserById = async (req, res, next) => {
       (n) => n.type === "date request",
     );
 
-
-    const profile = await Booking.find({userId:req.params.id}).select('status')
+    const profile = await Booking.find({ userId: req.params.id }).select(
+      "status",
+    );
     res.json({
       success: true,
       data: user,
@@ -309,7 +312,6 @@ const getUserById = async (req, res, next) => {
       callRequest_notifications,
       dateRequest_notifications,
       notifications,
-   
     });
   } catch (err) {
     next(err);
@@ -531,66 +533,6 @@ const getUserAnalytics = async (req, res) => {
   }
 };
 
-// const submitQuiz = async (req, res) => {
-//   try {
-//     const { quizzes } = req.body; // Hum expect kar rahe hain { "quizzes": [...] }
-//     const { userId } = req.params; // Middleware se mil raha hai
-//     console.log("quizzes ", quizzes, "userId", userId);
-//     // 1. Check karo ki array bheja bhi hai ya nahi
-//     if (!quizzes || !Array.isArray(quizzes) || quizzes.length === 0) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Please provide an array of quizzes in the 'quizzes' key.",
-//       });
-//     }
-
-//     // 2. Data Prepare: Har quiz category ke object mein userId ghusana
-//     const quizzesToSave = quizzes.map((quiz, index) => {
-//       // Validation: Har quiz ke andar answers hona zaruri hai
-//       if (
-//         !quiz.answers ||
-//         !Array.isArray(quiz.answers) ||
-//         quiz.answers.length === 0
-//       ) {
-//         throw new Error(
-//           `Quiz at index ${index} (${quiz.quizName || "Unknown"}) is missing answers.`,
-//         );
-//       }
-
-//       return {
-//         userId: userId,
-//         quizName: quiz.quizName,
-//         answers: quiz.answers, // Ye answers khud ek array hai [{question, selectedOption}]
-//       };
-//     });
-
-//     // 3. Bulk Insert: Saare 5 cards ka data ek saath database mein save hoga
-//     const savedQuizzes = await Quiz.insertMany(quizzesToSave);
-
-//     res.status(201).json({
-//       success: true,
-//       message: `${savedQuizzes.length} Quiz categories submitted successfully!`,
-//       data: savedQuizzes,
-//     });
-//   } catch (error) {
-//     console.error("❌ Submit Error:", error.message);
-
-//     // Validation ya Enum error handling
-//     if (error.name === "ValidationError") {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Validation Error: Check quiz names or structure.",
-//         error: error.message,
-//       });
-//     }
-
-//     res.status(400).json({
-//       success: false,
-//       message: error.message || "Internal Server Error",
-//     });
-//   }
-// };
-
 const submitQuiz = async (req, res) => {
   try {
     const { quizzes } = req.body;
@@ -713,7 +655,7 @@ const submitQuiz = async (req, res) => {
 const getRecommendedProfiles = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("API hit : ", userId);
+  
 
     const currentUser = await User.findById(userId);
 

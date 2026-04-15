@@ -10,7 +10,7 @@ const path = require("path");
 
 // Generate JWT
 const generateToken = (id, role) => {
-  console.log("Generating JWT for:", id, role);
+  
   return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 
@@ -64,8 +64,7 @@ const register = async (req, res) => {
 
 // Login
 const login = async (req, res) => {
-  console.log("Login endpoint hit");
-  console.log("Request body:", req.body);
+ 
 
   try {
     const { email, password } = req.body;
@@ -87,7 +86,7 @@ const login = async (req, res) => {
     }
 
     const isMatch = (await user.password) == password;
-    console.log("Password match result:", isMatch);
+   
     if (!isMatch) {
       console.log("Incorrect password for user:", email);
       return res
