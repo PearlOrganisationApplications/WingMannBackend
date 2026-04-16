@@ -34,6 +34,7 @@ app.use(
       "http://localhost:5173",
       "https://wingman-santosh.onrender.com",
       "https://wingmann.online",
+      'https://wingmann-rwgb.onrender.com'
     ],
     credentials: true,
   }),
