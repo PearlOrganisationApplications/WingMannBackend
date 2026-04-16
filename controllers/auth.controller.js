@@ -64,8 +64,6 @@ const register = async (req, res) => {
   }
 };
 
-// Login
-const bcrypt = require("bcryptjs");
 
 const login = async (req, res) => {
   try {
