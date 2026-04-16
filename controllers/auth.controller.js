@@ -7,6 +7,7 @@ const matchProfileSchema = require("../models/admin.photoupload");
 const restaurentModel = require("../models/admin.restaurent");
 const fs = require("fs");
 const path = require("path");
+const DateRequest = require('../models/dateRequest')
 
 // Generate JWT
 const generateToken = (id, role) => {
@@ -20,7 +21,7 @@ const register = async (req, res) => {
   console.log("Request body:", req.body);
 
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phonenumber } = req.body;
 
     if (!name || !email || !password || !role) {
       console.log("Missing fields in request");
@@ -38,9 +39,9 @@ const register = async (req, res) => {
         .json({ success: false, message: "User already exists" });
     }
 
-    console.log("Creating new user:", { name, email, role });
-    const user = await User.create({ name, email, password, role });
-    console.log("User created successfully:", user._id);
+    
+    const user = await User.create({ name, email, password, role, phonenumber, });
+
 
     const token = generateToken(user._id, user.role);
     console.log("Generated token:", token);
@@ -555,10 +556,10 @@ const dashboardOverview = async (req, res) => {
 
     // -------- DATES --------
     const [currentDates, prevDates] = await Promise.all([
-      restaurentModel.countDocuments({
+      DateRequest.countDocuments({
         createdAt: { $gte: startOfToday, $lte: endOfToday }
       }),
-      restaurentModel.countDocuments({
+      DateRequest.countDocuments({
         createdAt: { $gte: startOfYesterday, $lte: endOfYesterday }
       })
     ]);
