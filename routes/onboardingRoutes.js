@@ -19,7 +19,8 @@ const {
     checkUserInDB,
     checkPhoneNumber,
     Updateprofile,
-    UpdateFCMToken
+    UpdateFCMToken,
+   
 } = require('../controllers/onboarding.controller');
 
 const upload = require('../middlewares/upload');
@@ -54,6 +55,7 @@ router.get('/get-Unread-Notfi/:userId', getUnReadNotification)
 
 // POST /api/check-user
 router.post('/check', checkUserInDB);
+
 router.post('/user/login-phoneNumber', checkPhoneNumber)
 
 
