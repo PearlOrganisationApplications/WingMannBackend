@@ -8,6 +8,8 @@ const connectDB = require("./config/db");
 const trackTraffic = require("./middlewares/traffic");
 const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
 const User = require('./models/user.model');
+const dns = require("node:dns/promises");
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 dotenv.config();
 connectDB();
@@ -53,6 +55,7 @@ const feedbackRoutes = require("./routes/feedbackRoutes");
 const dateRequest = require("./routes/dateRequestRoutes");
 const callRequest = require("./routes/callRequestRoutes");
 
+
 app.get("/", (req, res) =>
   res
     .status(200)
@@ -96,17 +99,17 @@ io.on("connection", (socket) => {
   // });
   socket.on("register", (userId) => {
     onlineUsers.set(userId, socket.id);
-   
-   
+
+
   });
 
   socket.on("call:invite", async ({ fromUserId, toUserId, channelName }) => {
-  
+
 
     const targetSocket = onlineUsers.get(toUserId);
 
     if (!targetSocket) {
-    
+
       return socket.emit("call:error", { message: "User is offline" });
     }
 
@@ -116,7 +119,7 @@ io.on("connection", (socket) => {
         .select("name profilePic")
         .lean();
 
-     
+
 
       io.to(targetSocket).emit("incoming:call", {
         fromUserId,

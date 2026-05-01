@@ -37,7 +37,7 @@ const onboarding = async (req, res, next) => {
 const loginUser = async (req, res, next) => {
   try {
     const { email } = req.body;
- 
+
 
     // 1️⃣ Check if email & password provided
     if (!email) {
@@ -48,6 +48,7 @@ const loginUser = async (req, res, next) => {
     }
 
     // 2️⃣ Find user
+    console.log("Login attempt for email:", email);
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -80,7 +81,7 @@ const loginUser = async (req, res, next) => {
 const sendEmail = async (req, res) => {
   try {
     const { userId } = req.params;
-  
+
 
     const user = await User.findById({ _id: userId });
 
@@ -193,7 +194,7 @@ const uploadPhotosAndPreferences = async (req, res) => {
         message: "User not found",
       });
     }
-    console.log(req.body);
+  
 
     // ✅ Images
     const imageUrls = req.files.map((file) => {
@@ -243,7 +244,7 @@ const getUserById = async (req, res, next) => {
     const matchProfile = await matchProfileSchema.findOne({});
 
     // filter avatars by gender
-    const avatar = matchProfile.photos
+    const avatar = matchProfile?.photos
       .filter((photo) => photo.gender !== gender)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 18);
@@ -623,7 +624,7 @@ const submitQuiz = async (req, res) => {
         user.userQuizId = externalResponse.data.userId; // ✅ assign
         await user.save(); // ✅ save to DB
       }
-      console.log("✅ External API Response:", externalResponse.data);
+    
     } catch (apiError) {
       console.error(
         "❌ External API Error:",
@@ -652,27 +653,224 @@ const submitQuiz = async (req, res) => {
   }
 };
 
+// const getRecommendedProfiles = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+
+
+//     const currentUser = await User.findById(userId);
+
+//     if (!currentUser) {
+//       res.status(404).json({ message: "User not found" });
+//       return;
+//     }
+
+//     const quizId = currentUser?.userQuizId;
+//     console.log("quiz id :", quizId);
+
+//     if (quizId) {
+//       const externalResponse = await axios.get(
+//         // "https://wingcompatibilitytest.onrender.com/submit",
+//         // http://localhost:3000
+
+//         `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`,
+//       );
+
+//       const filteredProfiles = externalResponse.data.map((item) => ({
+//         ...item.user2,
+//         score: item.score,
+//       }));
+
+//       // 1. Extract all quiz user IDs
+//       const quizUserIds = filteredProfiles.map((profile) => profile.id);
+
+//       // 2. Fetch users from DB
+//       const users = await User.find({
+//         userQuizId: { $in: quizUserIds },
+//       }).lean();
+
+//       // 3. Map users by userQuizId for quick lookup
+//       const userMap = {};
+//       users.forEach((user) => {
+//         userMap[user.userQuizId] = user;
+//       });
+
+//       // 4. Merge user info with filteredProfiles
+//       const enrichedProfiles = filteredProfiles.map((profile) => ({
+//         ...profile,
+//         userInfo: userMap[profile.id] || null,
+//       }));
+
+//       console.log(enrichedProfiles);
+
+//       res.status(200).json({
+//         message: "profile recommended",
+//         profile: enrichedProfiles,
+//         quizComplete: true,
+//       });
+//     } else {
+
+//     }
+
+//     if(!quizId){
+//        const pref = currentUser.preferences;
+
+//     // ✅ If preferences are empty return latest 10 users
+//     if (
+//       !pref ||
+//       Object.keys(pref).length === 0 ||
+//       !pref.religion ||
+//       !pref.ethnicity
+//     ) {
+//       const latestUsers = await User.find({
+//         _id: { $ne: currentUser._id },
+//         role: "user",
+//       })
+//         .sort({ createdAt: -1 })
+//         .limit(10);
+
+//       res.status(200).json({
+//         success: true,
+//         count: latestUsers.length,
+//         users: latestUsers,
+//       });
+//       return;
+//     }
+
+//     // ✅ Normal recommendation logic
+//     const users = await User.aggregate([
+//       {
+//         $match: {
+//           _id: { $ne: currentUser._id },
+//           role: "user",
+//         },
+//       },
+
+//       {
+//         $addFields: {
+//           matchCount: {
+//             $add: [
+//               {
+//                 $cond: [
+//                   { $eq: ["$preferences.religion", pref.religion] },
+//                   1,
+//                   0,
+//                 ],
+//               },
+//               {
+//                 $cond: [
+//                   { $eq: ["$preferences.ethnicity", pref.ethnicity] },
+//                   1,
+//                   0,
+//                 ],
+//               },
+//               {
+//                 $cond: [
+//                   {
+//                     $gt: [
+//                       {
+//                         $size: {
+//                           $setIntersection: [
+//                             { $ifNull: ["$preferences.spoken_language", []] },
+//                             pref.spoken_language || [],
+//                           ],
+//                         },
+//                       },
+//                       0,
+//                     ],
+//                   },
+//                   1,
+//                   0,
+//                 ],
+//               },
+//               {
+//                 $cond: [
+//                   {
+//                     $and: [
+//                       { $gte: ["$preferences.age.max", pref.age?.min] },
+//                       { $lte: ["$preferences.age.min", pref.age?.max] },
+//                     ],
+//                   },
+//                   1,
+//                   0,
+//                 ],
+//               },
+//               {
+//                 $cond: [
+//                   {
+//                     $and: [
+//                       { $gte: ["$preferences.height.max", pref.height?.min] },
+//                       { $lte: ["$preferences.height.min", pref.height?.max] },
+//                     ],
+//                   },
+//                   1,
+//                   0,
+//                 ],
+//               },
+//             ],
+//           },
+//         },
+//       },
+
+//       // ⭐ calculate percentage
+//       {
+//         $addFields: {
+//           compatibilityPercentage: {
+//             $multiply: [{ $divide: ["$matchCount", 5] }, 100],
+//           },
+//         },
+//       },
+
+//       {
+//         $sort: { matchCount: -1 },
+//       },
+
+//       {
+//         $limit: 10,
+//       },
+//     ]);
+
+//     // res.status(200).json({
+//     //   success: true,
+//     //   count: users.length,
+//     //   users,
+//     // });
+//     res.status(200).json({
+//       success: true,
+//       quizIncomplete: "Submit the Quiz for profile Recommendation",
+//       quizComplete: false,
+//       users
+//     });
+
+//     }
+
+
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 const getRecommendedProfiles = async (req, res) => {
   try {
     const { userId } = req.params;
-  
 
     const currentUser = await User.findById(userId);
 
     if (!currentUser) {
-      res.status(404).json({ message: "User not found" });
-      return;
+      return res.status(404).json({ message: "User not found" });
     }
 
     const quizId = currentUser?.userQuizId;
-    console.log("quiz id :", quizId);
+   
 
+    // =========================
+    // 🔥 CASE 1: QUIZ EXISTS
+    // =========================
     if (quizId) {
       const externalResponse = await axios.get(
-        // "https://wingcompatibilitytest.onrender.com/submit",
-        // http://localhost:3000
-
-        `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`,
+        `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`
       );
 
       const filteredProfiles = externalResponse.data.map((item) => ({
@@ -680,165 +878,224 @@ const getRecommendedProfiles = async (req, res) => {
         score: item.score,
       }));
 
-      // 1. Extract all quiz user IDs
-      const quizUserIds = filteredProfiles.map((profile) => profile.id);
+      const quizUserIds = filteredProfiles.map((p) => p.id);
 
-      // 2. Fetch users from DB
       const users = await User.find({
         userQuizId: { $in: quizUserIds },
       }).lean();
 
-      // 3. Map users by userQuizId for quick lookup
       const userMap = {};
-      users.forEach((user) => {
-        userMap[user.userQuizId] = user;
+      users.forEach((u) => {
+        userMap[u.userQuizId] = u;
       });
 
-      // 4. Merge user info with filteredProfiles
       const enrichedProfiles = filteredProfiles.map((profile) => ({
         ...profile,
         userInfo: userMap[profile.id] || null,
       }));
 
-      console.log(enrichedProfiles);
-
-      res.status(200).json({
-        message: "profile recommended",
+      return res.status(200).json({
+        message: "Profile recommended (quiz based)",
         profile: enrichedProfiles,
         quizComplete: true,
       });
-    } else {
-      res.status(200).json({
+    }
+
+    // =========================
+    // 🔥 CASE 2: NO QUIZ → BASIC LOGIC
+    // =========================
+
+    const pref = currentUser.preferences;
+    const oppositeGender = currentUser.gender === "male" ? "female" : "male";
+
+    if (
+      !pref ||
+      Object.keys(pref).length === 0 ||
+      !pref.religion ||
+      !pref.ethnicity
+    ) {
+      const latestUsers = await User.find({
+        _id: { $ne: currentUser._id },
+        role: "user",
+      })
+        .sort({ createdAt: -1 })
+        .limit(10);
+
+      return res.status(200).json({
         success: true,
-        quizIncomplete: "Submit the Quiz for profile Recommendation",
-        quizComplete: false,
+        count: latestUsers.length,
+        users: latestUsers,
       });
     }
 
-    // const pref = currentUser.preferences;
+    let users = await User.aggregate([
+      {
+        $match: {
+          _id: { $ne: currentUser._id },
+          role: "user",
+          gender: oppositeGender, // 👈 prioritize opposite gender
+        },
+      },
+      {
+        $addFields: {
+          matchCount: {
+            $add: [
+              {
+                $cond: [
+                  { $eq: ["$preferences.religion", pref.religion] },
+                  1,
+                  0,
+                ],
+              },
+              {
+                $cond: [
+                  { $eq: ["$preferences.ethnicity", pref.ethnicity] },
+                  1,
+                  0,
+                ],
+              },
+              {
+                $cond: [
+                  {
+                    $gt: [
+                      {
+                        $size: {
+                          $setIntersection: [
+                            { $ifNull: ["$preferences.spoken_language", []] },
+                            pref.spoken_language || [],
+                          ],
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ["$preferences.age.max", pref.age?.min] },
+                      { $lte: ["$preferences.age.min", pref.age?.max] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ["$preferences.height.max", pref.height?.min] },
+                      { $lte: ["$preferences.height.min", pref.height?.max] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $addFields: {
+          compatibilityPercentage: {
+            $multiply: [{ $divide: ["$matchCount", 5] }, 100],
+          },
+        },
+      },
+      { $sort: { matchCount: -1 } },
+      { $limit: 5 },
+    ]);
+    // ✅ Step 3: Fallback to same gender if no results
+    if (!users || users.length === 0) {
+      users = await User.aggregate([
+        {
+          $match: {
+            _id: { $ne: currentUser._id },
+            role: "user",
+            gender: currentUser.gender, // 👈 fallback
+          },
+        },
+        // same pipeline as above ↓
+        {
+          $addFields: {
+            matchCount: {
+              $add: [
+                { $cond: [{ $eq: ["$preferences.religion", pref.religion] }, 1, 0] },
+                { $cond: [{ $eq: ["$preferences.ethnicity", pref.ethnicity] }, 1, 0] },
+                {
+                  $cond: [
+                    {
+                      $gt: [
+                        {
+                          $size: {
+                            $setIntersection: [
+                              { $ifNull: ["$preferences.spoken_language", []] },
+                              pref.spoken_language || [],
+                            ],
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+                {
+                  $cond: [
+                    {
+                      $and: [
+                        { $gte: ["$preferences.age.max", pref.age?.min] },
+                        { $lte: ["$preferences.age.min", pref.age?.max] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+                {
+                  $cond: [
+                    {
+                      $and: [
+                        { $gte: ["$preferences.height.max", pref.height?.min] },
+                        { $lte: ["$preferences.height.min", pref.height?.max] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $addFields: {
+            compatibilityPercentage: {
+              $multiply: [{ $divide: ["$matchCount", 5] }, 100],
+            },
+          },
+        },
+        { $sort: { matchCount: -1 } },
+        { $limit: 5 },
+      ]);
+    }
 
-    // ✅ If preferences are empty return latest 10 users
-    // if (
-    //   !pref ||
-    //   Object.keys(pref).length === 0 ||
-    //   !pref.religion ||
-    //   !pref.ethnicity
-    // ) {
-    //   const latestUsers = await User.find({
-    //     _id: { $ne: currentUser._id },
-    //     role: "user",
-    //   })
-    //     .sort({ createdAt: -1 })
-    //     .limit(10);
+    return res.status(200).json({
+      success: true,
+      quizComplete: false,
+      quizIncomplete: "Submit the Quiz for profile Recommendation",
+      users,
+    });
 
-    //   res.status(200).json({
-    //     success: true,
-    //     count: latestUsers.length,
-    //     users: latestUsers,
-    //   });
-    //   return;
-    // }
-
-    // ✅ Normal recommendation logic
-    // const users = await User.aggregate([
-    //   {
-    //     $match: {
-    //       _id: { $ne: currentUser._id },
-    //       role: "user",
-    //     },
-    //   },
-
-    //   {
-    //     $addFields: {
-    //       matchCount: {
-    //         $add: [
-    //           {
-    //             $cond: [
-    //               { $eq: ["$preferences.religion", pref.religion] },
-    //               1,
-    //               0,
-    //             ],
-    //           },
-    //           {
-    //             $cond: [
-    //               { $eq: ["$preferences.ethnicity", pref.ethnicity] },
-    //               1,
-    //               0,
-    //             ],
-    //           },
-    //           {
-    //             $cond: [
-    //               {
-    //                 $gt: [
-    //                   {
-    //                     $size: {
-    //                       $setIntersection: [
-    //                         { $ifNull: ["$preferences.spoken_language", []] },
-    //                         pref.spoken_language || [],
-    //                       ],
-    //                     },
-    //                   },
-    //                   0,
-    //                 ],
-    //               },
-    //               1,
-    //               0,
-    //             ],
-    //           },
-    //           {
-    //             $cond: [
-    //               {
-    //                 $and: [
-    //                   { $gte: ["$preferences.age.max", pref.age?.min] },
-    //                   { $lte: ["$preferences.age.min", pref.age?.max] },
-    //                 ],
-    //               },
-    //               1,
-    //               0,
-    //             ],
-    //           },
-    //           {
-    //             $cond: [
-    //               {
-    //                 $and: [
-    //                   { $gte: ["$preferences.height.max", pref.height?.min] },
-    //                   { $lte: ["$preferences.height.min", pref.height?.max] },
-    //                 ],
-    //               },
-    //               1,
-    //               0,
-    //             ],
-    //           },
-    //         ],
-    //       },
-    //     },
-    //   },
-
-    //   // ⭐ calculate percentage
-    //   {
-    //     $addFields: {
-    //       compatibilityPercentage: {
-    //         $multiply: [{ $divide: ["$matchCount", 5] }, 100],
-    //       },
-    //     },
-    //   },
-
-    //   {
-    //     $sort: { matchCount: -1 },
-    //   },
-
-    //   {
-    //     $limit: 10,
-    //   },
-    // ]);
-
-    // res.status(200).json({
-    //   success: true,
-    //   count: users.length,
-    //   users,
-    // });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -929,6 +1186,7 @@ const checkUserInDB = async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
+  console.log("Checking user existence for email:", email, "Found:", !!user);
 
   if (user) {
     return res.json({ exists: true, success: true, user });
@@ -938,15 +1196,43 @@ const checkUserInDB = async (req, res) => {
 };
 
 const checkPhoneNumber = async (req, res) => {
-  const { phonenumber } = req.body;
-  console.log("phonenumber :", phonenumber);
-  const user = await User.findOne({ phonenumber });
-  console.log("user from phone : ", user);
+  try {
+    let { phoneNumber } = req.body;
 
-  if (user) {
-    return res.json({ exists: true, success: true, user });
-  } else {
-    return res.json({ exists: false, success: false });
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+    phoneNumber = phoneNumber.replace(/\s/g, "");
+
+
+    console.log("📱 Phone:", phoneNumber);
+
+    const user = await User.findOne({ phonenumber: phoneNumber }).lean();
+
+    if (user) {
+      return res.status(200).json({
+        exists: true,
+        success: true,
+        message: "User exists",
+      });
+    }
+
+    return res.status(200).json({
+      exists: false,
+      success: true,
+      message: "User not found",
+    });
+
+  } catch (error) {
+    console.error("❌ Error in checkPhoneNumber:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
