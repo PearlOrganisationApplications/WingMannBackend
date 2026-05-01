@@ -123,7 +123,7 @@ const sendEmail = async (req, res) => {
 
 const Updateprofile = async (req, res) => {
   const { userId } = req.params;
-  const { selected, name, occupationWork } = req.body;
+  const { selected, name, occupationWork, location } = req.body;
 
   try {
     const user = await User.findById(userId);
@@ -151,6 +151,10 @@ const Updateprofile = async (req, res) => {
         company: occupationWork.company || "",
         position: occupationWork.position || "",
       };
+    }
+
+    if (location) {
+      user.location = { address: location };
     }
 
     await user.save();
@@ -617,9 +621,11 @@ const submitQuiz = async (req, res) => {
         // "https://wingcompatibilitytest.onrender.com/submit",
         // http://localhost:3000
 
-        "https://wingcompatibilitytest.onrender.com/submit",
+        "https://compatibility.wingmann.online/submit",
         externalPayload,
       );
+      
+
       if (externalResponse?.data?.userId) {
         user.userQuizId = externalResponse.data.userId; // ✅ assign
         await user.save(); // ✅ save to DB
@@ -870,7 +876,7 @@ const getRecommendedProfiles = async (req, res) => {
     // =========================
     if (quizId) {
       const externalResponse = await axios.get(
-        `https://wingcompatibilitytest.onrender.com/api/compatibility/all?user_id=${quizId}`
+        `https://compatibility.wingmann.online/api/compatibility/all?user_id=${quizId}`
       );
 
       const filteredProfiles = externalResponse.data.map((item) => ({
