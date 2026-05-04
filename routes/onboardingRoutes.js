@@ -20,6 +20,7 @@ const {
     checkPhoneNumber,
     Updateprofile,
     UpdateFCMToken,
+    checkPhoneNumberindb
    
 } = require('../controllers/onboarding.controller');
 
@@ -27,6 +28,7 @@ const upload = require('../middlewares/upload');
 
 //Agore
 router.post("/token", generateAgoraToken);
+router.post("/check-phone-number", checkPhoneNumberindb);
 
 router.post('/submit/:userId', submitQuiz);
 router.post('/uploadPhotosAndPreferences/:_id', upload.array('photos'), uploadPhotosAndPreferences);

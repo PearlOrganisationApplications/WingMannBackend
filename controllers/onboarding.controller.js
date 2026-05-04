@@ -121,11 +121,76 @@ const sendEmail = async (req, res) => {
   }
 };
 
+// const Updateprofile = async (req, res) => {
+//   const { userId } = req.params;
+//   const { selected, name, occupationWork, location } = req.body;
+
+//   try {
+//     const user = await User.findById(userId);
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     // ✅ 1. Update Interests
+//     if (selected && Array.isArray(selected)) {
+//       user.interest = selected;
+//     }
+
+//     // ✅ 2. Update Name
+//     if (name && name.trim() !== "") {
+//       user.name = name;
+//     }
+
+//     // ✅ 3. Update Work Info
+//     if (occupationWork) {
+//       user.work_info = {
+//         company: occupationWork.company || "",
+//         position: occupationWork.position || "",
+//       };
+//     }
+
+//     if (location) {
+//       user.location = { address: location };
+//     }
+
+//     await user.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Profile updated successfully",
+//       data: user,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+// ✅ GET ALL USERS
+
 const Updateprofile = async (req, res) => {
   const { userId } = req.params;
-  const { selected, name, occupationWork, location } = req.body;
+
+  let {
+    selected,
+    name,
+    occupationWork,
+    location,
+    preferences,
+  } = req.body;
 
   try {
+    // ✅ Parse form-data JSON string
+    if (preferences && typeof preferences === "string") {
+      preferences = JSON.parse(preferences);
+    }
+
     const user = await User.findById(userId);
 
     if (!user) {
@@ -135,26 +200,70 @@ const Updateprofile = async (req, res) => {
       });
     }
 
-    // ✅ 1. Update Interests
+    // ✅ Update Interests
     if (selected && Array.isArray(selected)) {
       user.interest = selected;
     }
 
-    // ✅ 2. Update Name
+    // ✅ Update Name
     if (name && name.trim() !== "") {
       user.name = name;
     }
 
-    // ✅ 3. Update Work Info
+    // ✅ Update Work Info
     if (occupationWork) {
       user.work_info = {
-        company: occupationWork.company || "",
-        position: occupationWork.position || "",
+        company:
+          occupationWork.company || "",
+        position:
+          occupationWork.position || "",
       };
     }
 
+    // ✅ Update Location
     if (location) {
-      user.location = { address: location };
+      user.location = {
+        address: location,
+      };
+    }
+
+    // ✅ Update Preferences
+    if (preferences) {
+      user.preferences = {
+        ...user.preferences,
+
+        age: {
+          min:
+            preferences?.age?.min ??
+            user.preferences?.age?.min,
+
+          max:
+            preferences?.age?.max ??
+            user.preferences?.age?.max,
+        },
+
+        height: {
+          min:
+            preferences?.height?.min ??
+            user.preferences?.height?.min,
+
+          max:
+            preferences?.height?.max ??
+            user.preferences?.height?.max,
+        },
+
+        religion:
+          preferences?.religion ??
+          user.preferences?.religion,
+
+        ethnicity:
+          preferences?.ethnicity ??
+          user.preferences?.ethnicity,
+
+        spoken_language:
+          preferences?.spoken_language ??
+          user.preferences?.spoken_language,
+      };
     }
 
     await user.save();
@@ -172,7 +281,6 @@ const Updateprofile = async (req, res) => {
   }
 };
 
-// ✅ GET ALL USERS
 const getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
@@ -198,7 +306,7 @@ const uploadPhotosAndPreferences = async (req, res) => {
         message: "User not found",
       });
     }
-  
+
 
     // ✅ Images
     const imageUrls = req.files.map((file) => {
@@ -624,13 +732,13 @@ const submitQuiz = async (req, res) => {
         "https://compatibility.wingmann.online/submit",
         externalPayload,
       );
-      
+
 
       if (externalResponse?.data?.userId) {
         user.userQuizId = externalResponse.data.userId; // ✅ assign
         await user.save(); // ✅ save to DB
       }
-    
+
     } catch (apiError) {
       console.error(
         "❌ External API Error:",
@@ -869,7 +977,7 @@ const getRecommendedProfiles = async (req, res) => {
     }
 
     const quizId = currentUser?.userQuizId;
-   
+
 
     // =========================
     // 🔥 CASE 1: QUIZ EXISTS
@@ -1223,6 +1331,7 @@ const checkPhoneNumber = async (req, res) => {
         exists: true,
         success: true,
         message: "User exists",
+        user: user
       });
     }
 
@@ -1234,6 +1343,53 @@ const checkPhoneNumber = async (req, res) => {
 
   } catch (error) {
     console.error("❌ Error in checkPhoneNumber:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+const checkPhoneNumberindb = async (req, res) => {
+  try {
+    let { phoneNumber } = req.body;
+
+    // ✅ Validation
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    // ✅ Remove spaces
+    phoneNumber = phoneNumber.replace(/\s/g, "");
+
+    console.log("📱 Checking Phone:", phoneNumber);
+
+    // ✅ Find user
+    const user = await User.findOne({
+      phonenumber: phoneNumber,
+    }).lean();
+
+    // ✅ Exists
+    if (user) {
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        message: "User exists",
+      });
+    }
+
+    // ❌ Not exists
+    return res.status(404).json({
+      success: false,
+      exists: false,
+      message: "Phone number not registered",
+    });
+  } catch (error) {
+    console.error("❌ checkPhoneNumber Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -1299,4 +1455,5 @@ module.exports = {
   checkPhoneNumber,
   Updateprofile,
   UpdateFCMToken,
+  checkPhoneNumberindb
 };
